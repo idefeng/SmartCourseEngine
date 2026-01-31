@@ -838,6 +838,121 @@ def render_generate_tab():
                     st.code(traceback.format_exc())
     else:
         st.info("📝 请先生成课件，然后才能一键生成视频")
+    
+    # 质量评估区域
+    st.markdown("---")
+    st.markdown("### 📊 课件质量评估")
+    
+    if "last_courseware" in st.session_state:
+        courseware = st.session_state.last_courseware
+        
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
+                    padding: 1rem; border-radius: 0.5rem; color: white; margin-bottom: 1rem;">
+            <strong>📄 待评估课件:</strong> {courseware.get('topic', '未命名')}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔍 开始质量评估", type="secondary", use_container_width=True):
+            try:
+                from quality_evaluator import CoursewareEvaluator
+                
+                evaluator = CoursewareEvaluator()
+                
+                with st.spinner("正在评估课件质量..."):
+                    report = evaluator.evaluate(courseware)
+                
+                # 保存报告到 session_state
+                st.session_state.quality_report = report
+                
+                # 显示评估结果
+                # 总分和等级
+                grade_colors = {"A": "green", "B": "blue", "C": "orange", "D": "red", "F": "red"}
+                grade_color = grade_colors.get(report.grade, "gray")
+                
+                col_score, col_grade = st.columns([2, 1])
+                with col_score:
+                    st.metric(
+                        label="综合评分",
+                        value=f"{report.overall_score:.1f} / 100",
+                        delta=f"{'优秀' if report.overall_score >= 80 else '良好' if report.overall_score >= 70 else '待提升'}"
+                    )
+                with col_grade:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, {'#27ae60' if report.grade in ['A', 'B'] else '#f39c12' if report.grade == 'C' else '#e74c3c'} 0%, 
+                                {'#2ecc71' if report.grade in ['A', 'B'] else '#f1c40f' if report.grade == 'C' else '#c0392b'} 100%); 
+                                padding: 1.5rem; border-radius: 0.5rem; text-align: center; color: white;">
+                        <div style="font-size: 2rem; font-weight: bold;">{report.grade}</div>
+                        <div>等级</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown(f"**📝 评估总结:** {report.summary}")
+                
+                # 详细评分
+                with st.expander("📊 详细评分", expanded=True):
+                    for s in report.scores:
+                        score_pct = s.score / 100
+                        bar_color = "green" if s.score >= 80 else "orange" if s.score >= 60 else "red"
+                        
+                        col1, col2, col3 = st.columns([3, 1, 4])
+                        with col1:
+                            st.markdown(f"**{s.criterion}** ({s.weight*100:.0f}%)")
+                        with col2:
+                            st.markdown(f"**{s.score:.0f}**")
+                        with col3:
+                            st.progress(score_pct, text=s.details)
+                
+                # 优势与建议
+                col_strength, col_weakness = st.columns(2)
+                
+                with col_strength:
+                    if report.strengths:
+                        st.markdown("#### ✅ 优势")
+                        for s in report.strengths:
+                            st.markdown(f"- {s}")
+                
+                with col_weakness:
+                    if report.weaknesses:
+                        st.markdown("#### ⚠️ 待改进")
+                        for w in report.weaknesses:
+                            st.markdown(f"- {w}")
+                
+                # 改进建议
+                if report.recommendations:
+                    with st.expander("💡 改进建议"):
+                        for r in report.recommendations:
+                            st.markdown(f"- {r}")
+                
+                # 导出报告
+                st.markdown("---")
+                if st.button("📥 导出评估报告", use_container_width=True):
+                    base_dir = Path(__file__).parent
+                    output_dir = base_dir / "generated_courseware"
+                    output_dir.mkdir(exist_ok=True)
+                    
+                    safe_topic = report.topic.replace("/", "_").replace("\\", "_")
+                    report_path = output_dir / f"质量评估_{safe_topic}.md"
+                    
+                    report_content = evaluator.export_report(report, str(report_path))
+                    st.success(f"✅ 报告已导出: {report_path.name}")
+                    
+                    with open(report_path, "r", encoding="utf-8") as f:
+                        st.download_button(
+                            label="📄 下载评估报告",
+                            data=f.read(),
+                            file_name=report_path.name,
+                            mime="text/markdown",
+                            use_container_width=True
+                        )
+                
+            except Exception as e:
+                st.error(f"❌ 评估失败: {e}")
+                import traceback
+                with st.expander("查看错误详情"):
+                    st.code(traceback.format_exc())
+    else:
+        st.info("📝 请先生成课件，然后才能进行质量评估")
 
 
 # ============================================================================

@@ -16,10 +16,47 @@ import os
 import sys
 import tempfile
 import time
+import json
 from pathlib import Path
 from datetime import datetime
 
 import streamlit as st
+
+
+# ============================================================================
+# 配置文件管理
+# ============================================================================
+CONFIG_FILE = Path(__file__).parent / "config.json"
+
+
+def load_config() -> dict:
+    """加载配置文件"""
+    default_config = {
+        "deepseek_api_key": "",
+        "heygen_api_key": "",
+        "model_name": "deepseek-chat"
+    }
+    
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                saved_config = json.load(f)
+                # 合并默认配置和保存的配置
+                default_config.update(saved_config)
+        except Exception:
+            pass
+    
+    return default_config
+
+
+def save_config(config: dict) -> bool:
+    """保存配置到文件"""
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception:
+        return False
 
 # 设置页面配置（必须是第一个 Streamlit 命令）
 st.set_page_config(
@@ -144,31 +181,59 @@ def render_sidebar():
         # API 配置
         st.markdown("### ⚙️ API 配置")
         
+        # 加载配置
+        config = load_config()
+        
+        # DeepSeek API Key
         api_key = st.text_input(
             "DeepSeek API Key",
-            value=os.getenv("DEEPSEEK_API_KEY", ""),
+            value=config.get("deepseek_api_key", ""),
             type="password",
-            help="用于知识点提取和内容生成"
+            help="用于知识点提取和内容生成",
+            key="deepseek_api_key_input"
         )
-        
-        if api_key:
-            os.environ["DEEPSEEK_API_KEY"] = api_key
-            st.success("✓ DeepSeek API Key 已配置")
         
         # HeyGen API Key
         heygen_key = st.text_input(
             "HeyGen API Key",
-            value=os.getenv("HEYGEN_API_KEY", ""),
+            value=config.get("heygen_api_key", ""),
             type="password",
-            help="用于生成数字人视频"
+            help="用于生成数字人视频",
+            key="heygen_api_key_input"
         )
+        
+        # 模型选择
+        model_options = ["deepseek-chat", "deepseek-coder", "qwen-turbo", "gpt-4o-mini"]
+        saved_model = config.get("model_name", "deepseek-chat")
+        default_index = model_options.index(saved_model) if saved_model in model_options else 0
+        model = st.selectbox("选择模型", model_options, index=default_index, key="model_select")
+        
+        # 检测配置变更并保存
+        config_changed = False
+        if api_key != config.get("deepseek_api_key", ""):
+            config["deepseek_api_key"] = api_key
+            config_changed = True
+        if heygen_key != config.get("heygen_api_key", ""):
+            config["heygen_api_key"] = heygen_key
+            config_changed = True
+        if model != config.get("model_name", "deepseek-chat"):
+            config["model_name"] = model
+            config_changed = True
+        
+        # 保存配置到文件
+        if config_changed:
+            if save_config(config):
+                st.toast("✓ 配置已保存", icon="💾")
+        
+        # 设置环境变量
+        if api_key:
+            os.environ["DEEPSEEK_API_KEY"] = api_key
+            st.success("✓ DeepSeek API Key 已配置")
         
         if heygen_key:
             os.environ["HEYGEN_API_KEY"] = heygen_key
             st.success("✓ HeyGen API Key 已配置")
         
-        model_options = ["deepseek-chat", "deepseek-coder", "qwen-turbo", "gpt-4o-mini"]
-        model = st.selectbox("选择模型", model_options, index=0)
         os.environ["MODEL_NAME"] = model
         
         st.markdown("---")
@@ -518,71 +583,261 @@ def render_generate_tab():
         st.code("$env:HEYGEN_API_KEY = 'your-heygen-api-key'")
     else:
         st.success("✓ HeyGen API Key 已配置")
+        
+        # 视频配置选项
+        with st.expander("⚙️ 视频生成配置", expanded=False):
+            st.markdown("#### 数字人形象")
+            
+            # 获取形象列表（带缓存）
+            if "heygen_avatars" not in st.session_state:
+                try:
+                    from video_creator import get_heygen_avatars
+                    st.session_state.heygen_avatars = get_heygen_avatars(heygen_key)
+                except Exception as e:
+                    st.session_state.heygen_avatars = []
+                    st.warning(f"获取形象列表失败: {e}")
+            
+            avatars = st.session_state.heygen_avatars
+            if avatars:
+                avatar_names = [f"{a['name']} ({a['gender']})" for a in avatars]
+                avatar_ids = [a['avatar_id'] for a in avatars]
+                
+                # 默认选择第一个
+                default_idx = 0
+                for i, aid in enumerate(avatar_ids):
+                    if "Kristin" in aid:  # 优先选择 Kristin
+                        default_idx = i
+                        break
+                
+                selected_avatar_idx = st.selectbox(
+                    "选择数字人形象",
+                    range(len(avatar_names)),
+                    index=default_idx,
+                    format_func=lambda i: avatar_names[i],
+                    help="选择视频中出现的数字人形象"
+                )
+                selected_avatar_id = avatar_ids[selected_avatar_idx]
+                
+                # 显示预览图
+                if avatars[selected_avatar_idx].get("preview_url"):
+                    st.image(avatars[selected_avatar_idx]["preview_url"], width=200)
+            else:
+                selected_avatar_id = "Kristin_public_2_20240108"
+                st.info("使用默认形象: Kristin")
+            
+            st.markdown("#### 语音设置")
+            
+            # 获取语音列表（带缓存）
+            if "heygen_voices" not in st.session_state:
+                try:
+                    from video_creator import get_heygen_voices
+                    st.session_state.heygen_voices = get_heygen_voices(heygen_key, "chinese")
+                except Exception as e:
+                    st.session_state.heygen_voices = []
+                    st.warning(f"获取语音列表失败: {e}")
+            
+            voices = st.session_state.heygen_voices
+            if voices:
+                voice_names = [f"{v['name']} ({v['gender']})" for v in voices]
+                voice_ids = [v['voice_id'] for v in voices]
+                
+                selected_voice_idx = st.selectbox(
+                    "选择语音",
+                    range(len(voice_names)),
+                    index=0,
+                    format_func=lambda i: voice_names[i],
+                    help="选择视频旁白的语音"
+                )
+                selected_voice_id = voice_ids[selected_voice_idx]
+            else:
+                selected_voice_id = "auto"
+                st.info("将自动选择中文语音")
+            
+            st.markdown("#### 视频分辨率")
+            
+            resolution_options = ["720p", "1080p", "方形 (1:1)", "竖屏 (9:16)"]
+            selected_resolution = st.selectbox(
+                "选择分辨率",
+                resolution_options,
+                index=0,
+                help="720p 适合网页播放，1080p 适合高清展示，方形适合社交媒体，竖屏适合手机观看"
+            )
+            
+            # 刷新按钮
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔄 刷新形象列表"):
+                    if "heygen_avatars" in st.session_state:
+                        del st.session_state.heygen_avatars
+                    st.rerun()
+            with col2:
+                if st.button("🔄 刷新语音列表"):
+                    if "heygen_voices" in st.session_state:
+                        del st.session_state.heygen_voices
+                    st.rerun()
+        
+        # 保存配置到 session_state
+        if "heygen_avatars" in st.session_state and st.session_state.heygen_avatars:
+            st.session_state.video_config = {
+                "avatar_id": selected_avatar_id,
+                "voice_id": selected_voice_id,
+                "dimension": selected_resolution
+            }
+        else:
+            st.session_state.video_config = {
+                "avatar_id": "Kristin_public_2_20240108",
+                "voice_id": "auto",
+                "dimension": "720p"
+            }
     
     # 检查是否有课件数据
     if "last_courseware" in st.session_state:
         courseware = st.session_state.last_courseware
         
-        # 显示课件信息
-        script_count = len(courseware.get("audio_scripts", [])) or len(courseware.get("scripts", []))
-        st.info(f"当前课件: {courseware.get('topic', '未命名')} | 脚本: {script_count} 个")
+        # 显示课件信息卡片
+        scripts = courseware.get("audio_scripts", []) or courseware.get("scripts", [])
+        script_count = len(scripts)
         
-        if st.button("🎬 一键生成视频", type="primary", use_container_width=True):
+        # 课件信息
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1rem; border-radius: 0.5rem; color: white; margin-bottom: 1rem;">
+            <strong>📄 当前课件:</strong> {courseware.get('topic', '未命名')}<br>
+            <strong>📝 脚本章节:</strong> {script_count} 个
+            {f"<br><small>章节: {', '.join([s.get('section', '未命名') for s in scripts[:5]])}{' ...' if len(scripts) > 5 else ''}</small>" if scripts else ""}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 生成模式选择
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            batch_mode = st.toggle(
+                "📦 批量模式",
+                value=False,
+                help="开启后每个章节生成独立视频，关闭则合并为一个视频"
+            )
+        with col2:
+            if batch_mode:
+                st.caption(f"将生成 {script_count} 个独立视频")
+            else:
+                st.caption("将合并为 1 个完整视频")
+        
+        # 生成按钮
+        if st.button("🎬 开始生成数字人视频", type="primary", use_container_width=True):
             if not heygen_key or heygen_key == "your-heygen-api-key-here":
                 st.error("请先配置 HeyGen API Key")
                 return
             
             try:
                 from video_creator import VideoCreator
+                import time as time_module
                 
-                # 显式传入 API 密钥
-                video_creator = VideoCreator(provider="heygen", api_key=heygen_key)
+                # 获取视频配置
+                video_config = st.session_state.get("video_config", {})
                 
-                # 创建进度显示
-                progress_placeholder = st.empty()
-                status_placeholder = st.empty()
+                # 显式传入 API 密钥和配置
+                video_creator = VideoCreator(
+                    provider="heygen", 
+                    api_key=heygen_key,
+                    avatar_id=video_config.get("avatar_id"),
+                    voice_id=video_config.get("voice_id"),
+                    dimension=video_config.get("dimension", "720p")
+                )
                 
-                def update_progress(status, elapsed, part=1, total=1):
-                    progress_placeholder.progress(
-                        part / total,
-                        text=f"片段 {part}/{total}: {status} ({elapsed}s)"
-                    )
-                    status_placeholder.info(f"视频合成中... {status}")
+                # 创建进度显示容器
+                progress_container = st.container()
+                with progress_container:
+                    st.markdown("### 🎬 视频生成进度")
+                    progress_bar = st.progress(0)
+                    
+                    # 状态信息显示
+                    col_status1, col_status2, col_status3 = st.columns(3)
+                    with col_status1:
+                        current_section = st.empty()
+                        current_section.metric("当前章节", "准备中...")
+                    with col_status2:
+                        current_status = st.empty()
+                        current_status.metric("状态", "初始化")
+                    with col_status3:
+                        elapsed_time = st.empty()
+                        elapsed_time.metric("已用时间", "0s")
+                    
+                    log_area = st.empty()
+                
+                start_time = time_module.time()
+                logs = []
+                
+                def update_progress(status, elapsed, part=1, total=1, section_name=""):
+                    # 更新进度条
+                    progress = part / total if total > 0 else 0
+                    progress_bar.progress(progress, text=f"进度: {part}/{total}")
+                    
+                    # 更新状态指标
+                    current_section.metric("当前章节", section_name or f"片段 {part}")
+                    current_status.metric("状态", status)
+                    
+                    total_elapsed = int(time_module.time() - start_time)
+                    elapsed_time.metric("已用时间", f"{total_elapsed}s")
+                    
+                    # 记录日志
+                    log_entry = f"[{total_elapsed}s] 章节 {part}/{total} ({section_name}): {status}"
+                    logs.append(log_entry)
+                    # 只显示最近5条日志
+                    log_area.code("\n".join(logs[-5:]), language=None)
                 
                 with st.spinner("正在生成数字人视频，请稍候（可能需要几分钟）..."):
                     videos = video_creator.create_from_courseware(
                         courseware,
-                        progress_callback=update_progress
+                        progress_callback=update_progress,
+                        batch_mode=batch_mode
                     )
                 
-                progress_placeholder.empty()
-                status_placeholder.empty()
+                # 计算总耗时
+                total_time = int(time_module.time() - start_time)
+                
+                # 清除进度显示
+                progress_container.empty()
                 
                 if videos:
-                    st.success(f"✓ 成功生成 {len(videos)} 个视频！")
+                    # 成功消息
+                    st.success(f"✅ 成功生成 {len(videos)} 个视频！总耗时: {total_time}s")
                     
-                    # 视频预览
-                    for video_path in videos:
-                        st.markdown(f"**{Path(video_path).name}**")
-                        st.video(video_path)
-                        
-                        # 下载按钮
-                        with open(video_path, "rb") as vf:
-                            st.download_button(
-                                label=f"📥 下载 {Path(video_path).name}",
-                                data=vf.read(),
-                                file_name=Path(video_path).name,
-                                mime="video/mp4"
-                            )
+                    # 视频展示区
+                    st.markdown("### 📹 生成的视频")
+                    
+                    for idx, video_path in enumerate(videos):
+                        with st.expander(f"🎬 {Path(video_path).name}", expanded=(idx == 0)):
+                            # 视频预览
+                            st.video(video_path)
+                            
+                            # 视频信息
+                            file_size = Path(video_path).stat().st_size / (1024 * 1024)  # MB
+                            st.caption(f"文件大小: {file_size:.2f} MB")
+                            
+                            # 下载按钮
+                            with open(video_path, "rb") as vf:
+                                st.download_button(
+                                    label=f"📥 下载视频",
+                                    data=vf.read(),
+                                    file_name=Path(video_path).name,
+                                    mime="video/mp4",
+                                    use_container_width=True,
+                                    key=f"download_{idx}"
+                                )
+                    
+                    # 批量下载提示
+                    if len(videos) > 1:
+                        st.info(f"💡 所有视频已保存到: output_videos 文件夹")
                 else:
-                    st.warning("未生成任何视频，请检查 API 配置")
+                    st.warning("⚠️ 未生成任何视频，请检查 API 配置和网络连接")
                     
             except Exception as e:
-                st.error(f"视频生成失败: {e}")
+                st.error(f"❌ 视频生成失败: {e}")
                 import traceback
-                st.code(traceback.format_exc())
+                with st.expander("查看错误详情"):
+                    st.code(traceback.format_exc())
     else:
-        st.info("请先生成课件，然后才能一键生成视频")
+        st.info("📝 请先生成课件，然后才能一键生成视频")
 
 
 # ============================================================================

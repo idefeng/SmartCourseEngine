@@ -33,6 +33,7 @@ console = Console()
 # HeyGen API (推荐)
 HEYGEN_API_KEY = os.getenv("HEYGEN_API_KEY", "your-heygen-api-key-here")
 HEYGEN_API_BASE = "https://api.heygen.com/v2"
+HEYGEN_API_BASE_V1 = "https://api.heygen.com/v1"  # 状态查询需要使用 v1 API
 
 # D-ID API (备选)
 DID_API_KEY = os.getenv("DID_API_KEY", "your-did-api-key-here")
@@ -40,10 +41,172 @@ DID_API_BASE = "https://api.d-id.com"
 
 # 默认配置
 DEFAULT_AVATAR_ID = os.getenv("DEFAULT_AVATAR_ID", "Kristin_public_2_20240108")
-DEFAULT_VOICE_ID = os.getenv("DEFAULT_VOICE_ID", "zh-CN-XiaoxiaoNeural")
+# 注意: HeyGen 使用自己的语音 ID 格式，需要通过 API 获取
+DEFAULT_VOICE_ID = os.getenv("DEFAULT_VOICE_ID", "auto")
 
 # 文本长度限制 (字符数)
 MAX_TEXT_LENGTH = 1500  # HeyGen 单次请求限制
+
+# 视频分辨率选项
+VIDEO_DIMENSIONS = {
+    "720p": {"width": 1280, "height": 720},
+    "1080p": {"width": 1920, "height": 1080},
+    "方形 (1:1)": {"width": 720, "height": 720},
+    "竖屏 (9:16)": {"width": 720, "height": 1280},
+}
+
+
+def get_heygen_avatars(api_key: str) -> List[Dict]:
+    """
+    获取 HeyGen 可用的数字人形象列表
+    
+    Args:
+        api_key: HeyGen API 密钥
+        
+    Returns:
+        形象列表，每个形象包含 avatar_id, name, preview_image_url 等信息
+    """
+    url = f"{HEYGEN_API_BASE}/avatars"
+    headers = {
+        "X-Api-Key": api_key,
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        data = response.json()
+        avatars = data.get("data", {}).get("avatars", [])
+        
+        # 过滤并格式化结果
+        result = []
+        for avatar in avatars:
+            avatar_info = {
+                "avatar_id": avatar.get("avatar_id", ""),
+                "name": avatar.get("avatar_name", avatar.get("avatar_id", "未命名")),
+                "preview_url": avatar.get("preview_image_url", ""),
+                "gender": avatar.get("gender", "unknown"),
+                "style": avatar.get("avatar_style", "normal")
+            }
+            if avatar_info["avatar_id"]:
+                result.append(avatar_info)
+        
+        console.print(f"[green]✓[/green] 获取到 {len(result)} 个可用形象")
+        return result
+        
+    except Exception as e:
+        console.print(f"[yellow]⚠[/yellow] 获取形象列表失败: {e}")
+        return []
+
+
+def get_heygen_voices(api_key: str, language_filter: str = None) -> List[Dict]:
+    """
+    获取 HeyGen 可用的语音列表
+    
+    Args:
+        api_key: HeyGen API 密钥
+        language_filter: 语言过滤 (如 "chinese", "english")
+        
+    Returns:
+        语音列表，每个语音包含 voice_id, name, language, gender 等信息
+    """
+    url = f"{HEYGEN_API_BASE}/voices"
+    headers = {
+        "X-Api-Key": api_key,
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        data = response.json()
+        voices = data.get("data", {}).get("voices", [])
+        
+        # 过滤并格式化结果
+        result = []
+        for voice in voices:
+            language = voice.get("language", "").lower()
+            
+            # 如果指定了语言过滤
+            if language_filter:
+                filter_lower = language_filter.lower()
+                if filter_lower not in language and language not in filter_lower:
+                    continue
+            
+            voice_info = {
+                "voice_id": voice.get("voice_id", ""),
+                "name": voice.get("name", voice.get("voice_id", "未命名")),
+                "language": voice.get("language", "unknown"),
+                "gender": voice.get("gender", "unknown"),
+                "preview_url": voice.get("preview_audio", "")
+            }
+            if voice_info["voice_id"]:
+                result.append(voice_info)
+        
+        console.print(f"[green]✓[/green] 获取到 {len(result)} 个可用语音")
+        return result
+        
+    except Exception as e:
+        console.print(f"[yellow]⚠[/yellow] 获取语音列表失败: {e}")
+        return []
+
+
+def get_heygen_chinese_voice(api_key: str) -> Optional[str]:
+    """
+    获取 HeyGen 支持的中文语音 ID
+    
+    Args:
+        api_key: HeyGen API 密钥
+        
+    Returns:
+        中文语音 ID，失败返回 None
+    """
+    url = f"{HEYGEN_API_BASE}/voices"
+    headers = {
+        "X-Api-Key": api_key,
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        data = response.json()
+        voices = data.get("data", {}).get("voices", [])
+        
+        # 优先查找简体中文女声
+        chinese_voices = [
+            v for v in voices 
+            if v.get("language", "").lower() in ["chinese", "mandarin", "zh", "zh-cn", "chinese (mandarin, simplified)"]
+            or "chinese" in v.get("language", "").lower()
+            or "mandarin" in v.get("language", "").lower()
+        ]
+        
+        if chinese_voices:
+            # 优先选择女声
+            female_voices = [v for v in chinese_voices if v.get("gender", "").lower() == "female"]
+            if female_voices:
+                voice_id = female_voices[0].get("voice_id")
+                console.print(f"[green]✓[/green] 自动选择中文语音: {female_voices[0].get('name', voice_id)}")
+                return voice_id
+            # 否则使用第一个中文语音
+            voice_id = chinese_voices[0].get("voice_id")
+            console.print(f"[green]✓[/green] 自动选择中文语音: {chinese_voices[0].get('name', voice_id)}")
+            return voice_id
+        
+        # 如果没有找到中文语音，返回第一个可用语音
+        if voices:
+            voice_id = voices[0].get("voice_id")
+            console.print(f"[yellow]⚠[/yellow] 未找到中文语音，使用: {voices[0].get('name', voice_id)}")
+            return voice_id
+        
+        return None
+        
+    except Exception as e:
+        console.print(f"[yellow]⚠[/yellow] 获取语音列表失败: {e}")
+        return None
 
 
 # ============================================================================
@@ -60,7 +223,8 @@ class HeyGenVideoCreator:
         self,
         api_key: str = HEYGEN_API_KEY,
         avatar_id: str = DEFAULT_AVATAR_ID,
-        voice_id: str = DEFAULT_VOICE_ID
+        voice_id: str = DEFAULT_VOICE_ID,
+        dimension: str = "720p"
     ):
         """
         初始化 HeyGen 视频创建器
@@ -68,15 +232,25 @@ class HeyGenVideoCreator:
         Args:
             api_key: HeyGen API 密钥
             avatar_id: 数字人形象 ID
-            voice_id: 语音 ID
+            voice_id: 语音 ID (设为 "auto" 自动获取中文语音)
+            dimension: 视频分辨率 ("720p", "1080p", "方形 (1:1)", "竖屏 (9:16)")
         """
         self.api_key = api_key
         self.avatar_id = avatar_id
-        self.voice_id = voice_id
+        self.dimension = VIDEO_DIMENSIONS.get(dimension, VIDEO_DIMENSIONS["720p"])
         self.headers = {
             "X-Api-Key": api_key,
             "Content-Type": "application/json"
         }
+        
+        # 如果语音 ID 为 "auto" 或无效，自动获取中文语音
+        if voice_id == "auto" or voice_id == "zh-CN-XiaoxiaoNeural":
+            self.voice_id = get_heygen_chinese_voice(api_key)
+            if not self.voice_id:
+                console.print("[yellow]⚠[/yellow] 无法自动获取语音，将使用默认配置")
+                self.voice_id = voice_id
+        else:
+            self.voice_id = voice_id
     
     def create_video(self, text: str, title: str = "video") -> Optional[str]:
         """
@@ -104,10 +278,7 @@ class HeyGenVideoCreator:
                     "voice_id": self.voice_id
                 }
             }],
-            "dimension": {
-                "width": 1280,
-                "height": 720
-            },
+            "dimension": self.dimension,
             "title": title
         }
         
@@ -153,7 +324,8 @@ class HeyGenVideoCreator:
         Returns:
             (状态, 视频URL)
         """
-        url = f"{HEYGEN_API_BASE}/video_status.get?video_id={video_id}"
+        # 注意: 状态查询需要使用 v1 API
+        url = f"{HEYGEN_API_BASE_V1}/video_status.get?video_id={video_id}"
         
         try:
             response = requests.get(url, headers=self.headers, timeout=60)
@@ -363,7 +535,14 @@ class VideoCreator:
     自动选择可用的 API 并处理脚本拆分。
     """
     
-    def __init__(self, provider: str = "heygen", api_key: str = None, avatar_id: str = None, voice_id: str = None):
+    def __init__(
+        self, 
+        provider: str = "heygen", 
+        api_key: str = None, 
+        avatar_id: str = None, 
+        voice_id: str = None,
+        dimension: str = "720p"
+    ):
         """
         初始化视频创建器
         
@@ -372,6 +551,7 @@ class VideoCreator:
             api_key: API 密钥 (如果不提供,将从环境变量读取)
             avatar_id: 数字人形象 ID (可选)
             voice_id: 语音 ID (可选)
+            dimension: 视频分辨率 ("720p", "1080p", "方形 (1:1)", "竖屏 (9:16)")
         """
         self.provider = provider.lower()
         
@@ -383,7 +563,8 @@ class VideoCreator:
             self.creator = HeyGenVideoCreator(
                 api_key=resolved_key,
                 avatar_id=resolved_avatar,
-                voice_id=resolved_voice
+                voice_id=resolved_voice,
+                dimension=dimension
             )
         else:
             resolved_key = api_key or os.getenv("DID_API_KEY", DID_API_KEY)
@@ -517,14 +698,16 @@ class VideoCreator:
     def create_from_courseware(
         self,
         courseware: Dict,
-        progress_callback=None
+        progress_callback=None,
+        batch_mode: bool = False
     ) -> List[str]:
         """
         从课件数据生成视频
         
         Args:
             courseware: content_generator 生成的课件数据
-            progress_callback: 进度回调
+            progress_callback: 进度回调 (status, elapsed, part, total, section_name)
+            batch_mode: 是否按章节分批生成视频 (True: 每个章节一个视频，False: 合并为一个视频)
             
         Returns:
             生成的视频文件路径列表
@@ -544,23 +727,57 @@ class VideoCreator:
         
         console.print(f"[green]✓[/green] 找到 {len(scripts)} 个脚本片段")
         
-        # 合并所有脚本
-        full_script = "\n\n".join([
-            f"【{s.get('section', '')}】\n{s.get('content', '')}"
-            for s in scripts if s.get('content')
-        ])
-        
-        if not full_script.strip():
-            console.print("[yellow]⚠ 脚本内容为空[/yellow]")
-            return []
-        
-        console.print(f"[dim]脚本总长度: {len(full_script)} 字符[/dim]")
-        
-        return self.create_video_from_script(
-            full_script,
-            title=topic,
-            progress_callback=progress_callback
-        )
+        if batch_mode and len(scripts) > 1:
+            # 批量模式：每个章节生成一个视频
+            console.print(f"[blue]→[/blue] 批量模式：将生成 {len(scripts)} 个独立视频")
+            
+            all_videos = []
+            for idx, script in enumerate(scripts):
+                section_name = script.get('section', f'第{idx+1}节')
+                content = script.get('content', '')
+                
+                if not content.strip():
+                    continue
+                
+                console.print(f"\n[blue]{'='*60}[/blue]")
+                console.print(f"[blue]→[/blue] 生成章节 {idx+1}/{len(scripts)}: {section_name}")
+                
+                # 包装进度回调，添加章节信息
+                def section_callback(status, elapsed, part=1, total=1):
+                    if progress_callback:
+                        progress_callback(status, elapsed, idx+1, len(scripts), section_name)
+                
+                section_videos = self.create_video_from_script(
+                    f"【{section_name}】\n{content}",
+                    title=f"{topic}_{section_name}",
+                    progress_callback=section_callback
+                )
+                all_videos.extend(section_videos)
+            
+            return all_videos
+        else:
+            # 合并模式：所有内容合并为一个视频
+            full_script = "\n\n".join([
+                f"【{s.get('section', '')}】\n{s.get('content', '')}"
+                for s in scripts if s.get('content')
+            ])
+            
+            if not full_script.strip():
+                console.print("[yellow]⚠ 脚本内容为空[/yellow]")
+                return []
+            
+            console.print(f"[dim]脚本总长度: {len(full_script)} 字符[/dim]")
+            
+            # 包装进度回调，添加章节信息
+            def merged_callback(status, elapsed, part=1, total=1):
+                if progress_callback:
+                    progress_callback(status, elapsed, part, total, "合并视频")
+            
+            return self.create_video_from_script(
+                full_script,
+                title=topic,
+                progress_callback=merged_callback
+            )
 
 
 # ============================================================================

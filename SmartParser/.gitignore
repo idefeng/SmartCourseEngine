@@ -1,0 +1,42 @@
+# ======================
+# SmartCourseEngine .gitignore
+# ======================
+
+# 敏感配置文件（包含 API KEY）
+config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志
+logs/*.log
+*.log
+
+# 数据库（如需保留请移除此行）
+# chroma_db/
+
+# 临时文件
+*.tmp
+*.temp

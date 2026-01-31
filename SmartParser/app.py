@@ -153,7 +153,19 @@ def render_sidebar():
         
         if api_key:
             os.environ["DEEPSEEK_API_KEY"] = api_key
-            st.success("✓ API Key 已配置")
+            st.success("✓ DeepSeek API Key 已配置")
+        
+        # HeyGen API Key
+        heygen_key = st.text_input(
+            "HeyGen API Key",
+            value=os.getenv("HEYGEN_API_KEY", ""),
+            type="password",
+            help="用于生成数字人视频"
+        )
+        
+        if heygen_key:
+            os.environ["HEYGEN_API_KEY"] = heygen_key
+            st.success("✓ HeyGen API Key 已配置")
         
         model_options = ["deepseek-chat", "deepseek-coder", "qwen-turbo", "gpt-4o-mini"]
         model = st.selectbox("选择模型", model_options, index=0)
@@ -472,14 +484,20 @@ def render_generate_tab():
             
             docx_path = generator.export_to_word(courseware, str(output_dir))
             
-            with open(docx_path, "rb") as f:
-                st.download_button(
-                    label="📄 下载 Word 文档",
-                    data=f.read(),
-                    file_name=Path(docx_path).name,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    type="primary"
-                )
+            col_dl1, col_dl2 = st.columns(2)
+            
+            with col_dl1:
+                with open(docx_path, "rb") as f:
+                    st.download_button(
+                        label="📄 下载 Word 文档",
+                        data=f.read(),
+                        file_name=Path(docx_path).name,
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True
+                    )
+            
+            # 保存课件数据用于视频生成
+            st.session_state.last_courseware = courseware
             
             st.success(f"文件已保存: {docx_path}")
             
@@ -487,6 +505,84 @@ def render_generate_tab():
             st.error(f"生成失败: {e}")
             import traceback
             st.code(traceback.format_exc())
+    
+    # 视频生成区域
+    st.markdown("---")
+    st.markdown("### 🎬 生成数字人视频")
+    
+    # 检查 HeyGen API Key
+    heygen_key = os.getenv("HEYGEN_API_KEY", "")
+    
+    if not heygen_key or heygen_key == "your-heygen-api-key-here":
+        st.warning("⚠️ 请先配置 HeyGen API Key 才能生成视频")
+        st.code("$env:HEYGEN_API_KEY = 'your-heygen-api-key'")
+    else:
+        st.success("✓ HeyGen API Key 已配置")
+    
+    # 检查是否有课件数据
+    if "last_courseware" in st.session_state:
+        courseware = st.session_state.last_courseware
+        
+        # 显示课件信息
+        script_count = len(courseware.get("audio_scripts", [])) or len(courseware.get("scripts", []))
+        st.info(f"当前课件: {courseware.get('topic', '未命名')} | 脚本: {script_count} 个")
+        
+        if st.button("🎬 一键生成视频", type="primary", use_container_width=True):
+            if not heygen_key or heygen_key == "your-heygen-api-key-here":
+                st.error("请先配置 HeyGen API Key")
+                return
+            
+            try:
+                from video_creator import VideoCreator
+                
+                # 显式传入 API 密钥
+                video_creator = VideoCreator(provider="heygen", api_key=heygen_key)
+                
+                # 创建进度显示
+                progress_placeholder = st.empty()
+                status_placeholder = st.empty()
+                
+                def update_progress(status, elapsed, part=1, total=1):
+                    progress_placeholder.progress(
+                        part / total,
+                        text=f"片段 {part}/{total}: {status} ({elapsed}s)"
+                    )
+                    status_placeholder.info(f"视频合成中... {status}")
+                
+                with st.spinner("正在生成数字人视频，请稍候（可能需要几分钟）..."):
+                    videos = video_creator.create_from_courseware(
+                        courseware,
+                        progress_callback=update_progress
+                    )
+                
+                progress_placeholder.empty()
+                status_placeholder.empty()
+                
+                if videos:
+                    st.success(f"✓ 成功生成 {len(videos)} 个视频！")
+                    
+                    # 视频预览
+                    for video_path in videos:
+                        st.markdown(f"**{Path(video_path).name}**")
+                        st.video(video_path)
+                        
+                        # 下载按钮
+                        with open(video_path, "rb") as vf:
+                            st.download_button(
+                                label=f"📥 下载 {Path(video_path).name}",
+                                data=vf.read(),
+                                file_name=Path(video_path).name,
+                                mime="video/mp4"
+                            )
+                else:
+                    st.warning("未生成任何视频，请检查 API 配置")
+                    
+            except Exception as e:
+                st.error(f"视频生成失败: {e}")
+                import traceback
+                st.code(traceback.format_exc())
+    else:
+        st.info("请先生成课件，然后才能一键生成视频")
 
 
 # ============================================================================

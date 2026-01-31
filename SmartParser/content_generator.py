@@ -18,6 +18,7 @@ import os
 import sys
 import json
 import re
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any
@@ -30,6 +31,30 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 console = Console()
+
+# 性能优化模块
+try:
+    from performance_optimizer import (
+        disk_cache, memory_cache, PerformanceTimer,
+        get_performance_summary, LRUCache
+    )
+    PERF_ENABLED = True
+except ImportError:
+    PERF_ENABLED = False
+    # 创建空装饰器
+    def disk_cache(func):
+        return func
+    def memory_cache(key_func=None):
+        def decorator(func):
+            return func
+        return decorator
+    class PerformanceTimer:
+        def __init__(self, *args, **kwargs):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
 
 # ============================================================================
 # API 配置
@@ -130,6 +155,12 @@ QUIZ_PROMPT = """你是一位专业的命题专家。请根据以下知识点内
 
 
 # ============================================================================
+# LLM 响应缓存
+# ============================================================================
+_llm_cache = LRUCache(max_size=50) if PERF_ENABLED else None
+
+
+# ============================================================================
 # 内容生成器主类
 # ============================================================================
 class ContentGenerator:
@@ -143,12 +174,14 @@ class ContentGenerator:
         self,
         api_key: str = API_KEY,
         base_url: str = BASE_URL,
-        model_name: str = MODEL_NAME
+        model_name: str = MODEL_NAME,
+        enable_cache: bool = True
     ):
         """初始化内容生成器"""
         self.api_key = api_key
         self.base_url = base_url
         self.model_name = model_name
+        self.enable_cache = enable_cache and PERF_ENABLED
         
         self._init_llm()
         self._init_knowledge_manager()
@@ -183,13 +216,40 @@ class ContentGenerator:
             console.print(f"[red]✗[/red] 知识库连接失败: {e}")
             self.knowledge_manager = None
     
-    def _call_llm(self, prompt: str) -> str:
-        """调用 LLM"""
+    def _call_llm(self, prompt: str, use_cache: bool = True) -> str:
+        """
+        调用 LLM（带缓存和性能监控）
+        
+        Args:
+            prompt: 提示词
+            use_cache: 是否使用缓存
+            
+        Returns:
+            LLM 响应内容
+        """
         if not self.llm:
             raise Exception("LLM 不可用")
         
-        response = self.llm.invoke(prompt)
-        return response.content.strip()
+        # 生成缓存键
+        cache_key = hashlib.md5(prompt.encode()).hexdigest()
+        
+        # 尝试从缓存获取
+        if use_cache and self.enable_cache and _llm_cache:
+            cached = _llm_cache.get(cache_key)
+            if cached:
+                console.print("[dim]  (使用缓存)[/dim]")
+                return cached
+        
+        # 调用 LLM（带性能监控）
+        with PerformanceTimer("llm_call", {"prompt_length": len(prompt)}):
+            response = self.llm.invoke(prompt)
+            result = response.content.strip()
+        
+        # 缓存结果
+        if use_cache and self.enable_cache and _llm_cache:
+            _llm_cache.set(cache_key, result)
+        
+        return result
     
     def _parse_json(self, text: str) -> Optional[Dict]:
         """安全解析 JSON"""

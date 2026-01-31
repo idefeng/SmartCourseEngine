@@ -1376,6 +1376,370 @@ def render_learning_report_tab():
 
 
 # ============================================================================
+# 知识图谱标签页
+# ============================================================================
+def render_knowledge_graph_tab():
+    """渲染知识图谱标签页"""
+    st.markdown("### 🗺️ 知识图谱可视化")
+    st.markdown("以图形方式展示知识点之间的逻辑关联，支持交互编辑")
+    
+    # 检查是否有课件
+    if "last_courseware" not in st.session_state:
+        st.warning("⚠️ 请先在「课件生成」标签页生成课件")
+        return
+    
+    # 初始化专家验证器
+    try:
+        from expert_validator import (
+            ExpertValidator,
+            KnowledgeGraph,
+            graph_to_dict,
+            dict_to_graph
+        )
+        validator = ExpertValidator()
+    except Exception as e:
+        st.error(f"专家验证器初始化失败: {e}")
+        return
+    
+    courseware = st.session_state.last_courseware
+    topic = courseware.get("topic", "知识图谱")
+    
+    # 构建或获取知识图谱
+    if "knowledge_graph" not in st.session_state:
+        with st.spinner("🔄 正在构建知识图谱..."):
+            graph = validator.build_knowledge_graph(courseware)
+            st.session_state.knowledge_graph = graph_to_dict(graph)
+    
+    graph = dict_to_graph(st.session_state.knowledge_graph)
+    
+    # 图谱信息卡
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); 
+                padding: 1.5rem; border-radius: 1rem; color: #333; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">📚 {topic}</h3>
+        <p style="margin: 0.5rem 0 0 0;">
+            节点数: {len(graph.nodes)} | 关联数: {len(graph.edges)}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 尝试使用 streamlit-agraph
+    try:
+        from streamlit_agraph import agraph, Node, Edge, Config
+        
+        # 转换为 agraph 格式
+        nodes_data, edges_data = graph.to_agraph_data()
+        
+        nodes = [
+            Node(
+                id=n["id"],
+                label=n["label"],
+                title=n.get("title", ""),
+                color=n.get("color", "#97C2FC"),
+                size=n.get("size", 25)
+            )
+            for n in nodes_data
+        ]
+        
+        edges = [
+            Edge(
+                source=e["source"],
+                target=e["target"],
+                label=e.get("label", ""),
+                width=e.get("width", 2),
+                color=e.get("color", "#888888")
+            )
+            for e in edges_data
+        ]
+        
+        config = Config(
+            width=800,
+            height=500,
+            directed=True,
+            physics=True,
+            hierarchical=False,
+            nodeHighlightBehavior=True,
+            highlightColor="#F7A7A6",
+            collapsible=True
+        )
+        
+        # 渲染图谱
+        selected_node = agraph(nodes=nodes, edges=edges, config=config)
+        
+        # 显示选中节点信息
+        if selected_node:
+            st.markdown("---")
+            st.markdown(f"**选中节点**: {selected_node}")
+            
+            # 查找节点详情
+            for node in graph.nodes:
+                if node.node_id == selected_node:
+                    st.markdown(f"**类别**: {node.category}")
+                    st.markdown(f"**内容**: {node.content}")
+                    st.markdown(f"**重要度**: {node.importance:.0%}")
+                    break
+        
+    except ImportError:
+        st.warning("⚠️ streamlit-agraph 未安装，显示简化版本")
+        st.code("pip install streamlit-agraph")
+        
+        # 简化显示
+        st.markdown("#### 📊 知识节点列表")
+        for node in graph.nodes:
+            with st.expander(f"{'⭐' if node.importance > 0.7 else '📌'} {node.label}"):
+                st.markdown(f"**类别**: {node.category}")
+                st.markdown(f"**内容**: {node.content}")
+                st.markdown(f"**重要度**: {node.importance:.0%}")
+        
+        st.markdown("#### 🔗 知识关联")
+        for edge in graph.edges:
+            if not edge.is_blocked:
+                st.markdown(f"- {edge.source_id} → *{edge.relation}* → {edge.target_id}")
+    
+    st.markdown("---")
+    
+    # 边管理
+    st.markdown("### ⚙️ 关联管理")
+    st.markdown("您可以禁用或调整知识点之间的关联权重")
+    
+    if graph.edges:
+        edge_options = [
+            f"{e.source_id} → {e.target_id} ({e.relation})"
+            for e in graph.edges
+        ]
+        
+        selected_edge_idx = st.selectbox(
+            "选择关联",
+            range(len(edge_options)),
+            format_func=lambda x: edge_options[x]
+        )
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            new_weight = st.slider(
+                "权重",
+                0.0, 2.0,
+                value=graph.edges[selected_edge_idx].weight,
+                step=0.1
+            )
+        
+        with col2:
+            if st.button("✅ 更新权重"):
+                graph.edges[selected_edge_idx].weight = new_weight
+                st.session_state.knowledge_graph = graph_to_dict(graph)
+                st.success("权重已更新")
+                st.rerun()
+        
+        with col3:
+            is_blocked = graph.edges[selected_edge_idx].is_blocked
+            if st.button("🚫 禁用" if not is_blocked else "✅ 启用"):
+                graph.edges[selected_edge_idx].is_blocked = not is_blocked
+                st.session_state.knowledge_graph = graph_to_dict(graph)
+                st.success("状态已更新")
+                st.rerun()
+    
+    # 重建图谱
+    st.markdown("---")
+    if st.button("🔄 重新构建知识图谱", type="secondary"):
+        with st.spinner("正在重建..."):
+            graph = validator.build_knowledge_graph(courseware)
+            st.session_state.knowledge_graph = graph_to_dict(graph)
+            st.success("知识图谱已重建")
+            st.rerun()
+
+
+# ============================================================================
+# 标准库管理标签页
+# ============================================================================
+def render_standards_library_tab():
+    """渲染标准库管理标签页"""
+    st.markdown("### 📋 行业标准库管理")
+    st.markdown("上传和管理行业标准文档，用于课件生成时的合规性校验")
+    
+    # 初始化专家验证器
+    try:
+        from expert_validator import (
+            ExpertValidator,
+            get_available_industries,
+            STANDARDS_DIR
+        )
+        validator = ExpertValidator()
+    except Exception as e:
+        st.error(f"专家验证器初始化失败: {e}")
+        return
+    
+    # 行业选择
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        industries = get_available_industries()
+        selected_industry = st.selectbox(
+            "选择行业",
+            industries,
+            help="选择行业以加载对应的敏感词库"
+        )
+    
+    with col2:
+        st.metric("已加载标准", len(validator.get_standards_list()))
+    
+    st.markdown("---")
+    
+    # 已有标准列表
+    st.markdown("#### 📚 已加载的标准文档")
+    
+    standards_list = validator.get_standards_list()
+    
+    if standards_list:
+        for std_name in standards_list:
+            with st.expander(f"📄 {std_name}"):
+                std_path = STANDARDS_DIR / f"{std_name}.md"
+                if std_path.exists():
+                    content = std_path.read_text(encoding='utf-8')
+                    st.markdown(content[:2000] + ("..." if len(content) > 2000 else ""))
+                    
+                    if st.button(f"🗑️ 删除", key=f"del_{std_name}"):
+                        std_path.unlink()
+                        st.success(f"已删除: {std_name}")
+                        st.rerun()
+    else:
+        st.info("📭 暂无标准文档，请上传行业标准")
+    
+    st.markdown("---")
+    
+    # 上传新标准
+    st.markdown("#### ➕ 添加新标准")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        std_name = st.text_input(
+            "标准名称",
+            placeholder="如：国家托育服务标准、医疗机构管理条例"
+        )
+    
+    with col2:
+        upload_method = st.radio("上传方式", ["文件上传", "手动输入"], horizontal=True)
+    
+    if upload_method == "文件上传":
+        uploaded_file = st.file_uploader(
+            "上传标准文档",
+            type=["txt", "md"],
+            help="支持 TXT 或 Markdown 格式"
+        )
+        
+        if uploaded_file and std_name:
+            if st.button("📤 上传标准", type="primary"):
+                content = uploaded_file.read().decode('utf-8')
+                if validator.add_standard(std_name, content):
+                    st.success(f"✅ 标准 '{std_name}' 已添加")
+                    st.rerun()
+                else:
+                    st.error("添加失败")
+    else:
+        std_content = st.text_area(
+            "标准内容",
+            height=200,
+            placeholder="请输入标准文档内容...\n\n格式建议：\n第1条：...\n第2条：..."
+        )
+        
+        if std_name and std_content:
+            if st.button("💾 保存标准", type="primary"):
+                if validator.add_standard(std_name, std_content):
+                    st.success(f"✅ 标准 '{std_name}' 已添加")
+                    st.rerun()
+                else:
+                    st.error("添加失败")
+    
+    st.markdown("---")
+    
+    # 敏感词测试
+    st.markdown("#### 🔍 敏感词检测测试")
+    
+    test_text = st.text_area(
+        "输入测试文本",
+        height=100,
+        placeholder="输入文本以检测其中的敏感词..."
+    )
+    
+    if test_text:
+        # 创建对应行业的验证器
+        industry_validator = ExpertValidator(industry=selected_industry)
+        is_safe, found_words = industry_validator.check_sensitive_words(test_text)
+        
+        if is_safe:
+            st.success("✅ 未检测到敏感词")
+        else:
+            st.error(f"⚠️ 检测到敏感词: {', '.join(found_words)}")
+    
+    st.markdown("---")
+    
+    # 内容验证测试
+    st.markdown("#### 🧪 双模型验证测试")
+    st.markdown("测试生成内容的专家级验证流程")
+    
+    with st.expander("展开验证测试"):
+        test_content = st.text_area(
+            "待验证内容",
+            height=150,
+            placeholder="输入需要验证的课件内容..."
+        )
+        
+        source_material = st.text_area(
+            "原始素材 (可选)",
+            height=100,
+            placeholder="用于对比验证的原始知识来源..."
+        )
+        
+        selected_standards = st.multiselect(
+            "选择适用标准",
+            standards_list
+        )
+        
+        if test_content:
+            if st.button("🔬 开始验证", type="primary"):
+                with st.spinner("🔄 正在进行双模型验证..."):
+                    industry_validator = ExpertValidator(industry=selected_industry)
+                    
+                    validated_content, feedback = industry_validator.validate_content(
+                        test_content,
+                        source_material,
+                        selected_standards,
+                        max_revisions=2
+                    )
+                    
+                    # 显示验证结果
+                    result_color = {
+                        "passed": "green",
+                        "needs_revision": "orange",
+                        "rejected": "red"
+                    }
+                    
+                    st.markdown(f"""
+                    <div style="background: {'#d4edda' if feedback.result.value == 'passed' else '#fff3cd' if feedback.result.value == 'needs_revision' else '#f8d7da'}; 
+                                padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
+                        <h4 style="margin: 0;">验证结果: {feedback.result.value.upper()}</h4>
+                        <p>评分: {feedback.score:.0f} / 100</p>
+                        <p>可发布: {'✅ 是' if feedback.safe_to_publish else '❌ 否'}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if feedback.hallucinations:
+                        st.warning(f"🎭 发现幻觉: {', '.join(feedback.hallucinations)}")
+                    
+                    if feedback.issues:
+                        st.info(f"💡 问题: {', '.join(feedback.issues)}")
+                    
+                    if feedback.suggestions:
+                        st.markdown("**修改建议:**")
+                        for sug in feedback.suggestions:
+                            st.markdown(f"- {sug}")
+                    
+                    if validated_content != test_content:
+                        st.markdown("**修正后内容:**")
+                        st.text_area("", validated_content, height=200, disabled=True)
+
+
+# ============================================================================
 # 主程序
 # ============================================================================
 def main():
@@ -1390,12 +1754,14 @@ def main():
     st.markdown("---")
     
     # 标签页
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📁 素材入库", 
         "🧠 知识大脑", 
         "✨ 课件生成",
         "🎮 互动学习",
-        "📊 学习报告"
+        "📊 学习报告",
+        "🗺️ 知识图谱",
+        "📋 标准库"
     ])
     
     with tab1:
@@ -1412,8 +1778,13 @@ def main():
     
     with tab5:
         render_learning_report_tab()
+    
+    with tab6:
+        render_knowledge_graph_tab()
+    
+    with tab7:
+        render_standards_library_tab()
 
 
 if __name__ == "__main__":
     main()
-

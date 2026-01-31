@@ -1007,13 +1007,20 @@ def render_interactive_learning_tab():
     scripts = courseware.get("scripts", [])
     section_names = [s.get("section", f"第{i+1}节") for i, s in enumerate(scripts)]
     
+    # 检查是否有章节
+    if not section_names:
+        st.warning("⚠️ 当前课件没有章节内容，请先生成完整的课件")
+        return
+    
     col1, col2 = st.columns([3, 1])
     with col1:
+        # 确保 index 在有效范围内
+        default_index = min(session.current_section_index, len(section_names) - 1)
         selected_section = st.selectbox(
             "选择章节",
             range(len(section_names)),
             format_func=lambda x: f"{'🔓' if x in session.unlocked_sections else '🔒'} {section_names[x]}",
-            index=session.current_section_index
+            index=default_index
         )
     
     with col2:

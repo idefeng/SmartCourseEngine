@@ -451,7 +451,7 @@ class InteractionEngine:
         return RemediationContent(
             knowledge_point=knowledge_point,
             content_type="text",
-            content=f"关于"{knowledge_point}"的基础知识：请回顾课程前面的内容，特别注意核心概念的定义和应用场景。",
+            content=f'关于"{knowledge_point}"的基础知识：请回顾课程前面的内容，特别注意核心概念的定义和应用场景。',
             source="默认",
             difficulty_level="basic"
         )

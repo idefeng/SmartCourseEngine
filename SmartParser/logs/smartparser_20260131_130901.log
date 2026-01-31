@@ -1,0 +1,16 @@
+2026-01-31 13:09:04 | INFO     | SmartParser | [green]✓[/green] Docling 文档解析器初始化成功
+2026-01-31 13:09:04 | INFO     | SmartParser | 正在加载 Whisper small 模型（首次加载需要下载）...
+2026-01-31 13:11:03 | INFO     | SmartParser | [green]✓[/green] Whisper 模型已加载 (CPU 模式)
+2026-01-31 13:11:04 | ERROR    | SmartParser | [red]✗[/red] PaddleOCR 初始化失败: Unknown argument: show_log
+2026-01-31 13:11:04 | INFO     | SmartParser | 发现 2 个已存在的文件，开始处理...
+2026-01-31 13:11:04 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [video]: 如愿降调视频.mp4
+2026-01-31 13:11:04 | INFO     | SmartParser | 正在转写: 如愿降调视频.mp4
+2026-01-31 13:11:04 | ERROR    | SmartParser | 音频提取失败: No module named 'moviepy.editor'
+2026-01-31 13:11:04 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [document]: 托育培训项目实施方案0115.docx
+2026-01-31 13:11:04 | INFO     | SmartParser | 正在解析文档: 托育培训项目实施方案0115.docx
+2026-01-31 13:11:04 | INFO     | SmartParser | [green]✓[/green] 文档解析完成: 托育培训项目实施方案0115.docx
+2026-01-31 13:11:04 | INFO     | SmartParser | [green]✓[/green] 已保存: 托育培训项目实施方案0115.md
+2026-01-31 13:11:04 | INFO     | SmartParser | [green]●[/green] 正在监听文件夹: E:\DEV\ETLChina\SmartCourseEngine\SmartParser\input_materials
+2026-01-31 13:11:04 | INFO     | SmartParser | [dim]按 Ctrl+C 停止程序[/dim]
+2026-01-31 13:11:23 | INFO     | SmartParser | 
+[yellow]正在停止...[/yellow]

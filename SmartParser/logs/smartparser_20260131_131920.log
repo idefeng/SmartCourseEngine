@@ -1,0 +1,54 @@
+2026-01-31 13:19:22 | INFO     | SmartParser | [green]✓[/green] Docling 文档解析器初始化成功
+2026-01-31 13:19:22 | INFO     | SmartParser | 正在加载 Whisper small 模型（首次加载需要下载）...
+2026-01-31 13:19:24 | INFO     | SmartParser | [green]✓[/green] Whisper 模型已加载 (CPU 模式)
+2026-01-31 13:19:25 | WARNING  | SmartParser | [yellow]⚠[/yellow] PaddleOCR 未安装，图片 OCR 功能不可用
+2026-01-31 13:19:25 | INFO     | SmartParser | 发现 2 个已存在的文件，开始处理...
+2026-01-31 13:19:25 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [video]: 如愿降调视频.mp4
+2026-01-31 13:19:25 | INFO     | SmartParser | 正在转写: 如愿降调视频.mp4
+2026-01-31 13:19:26 | INFO     | SmartParser | 正在从视频提取音频...
+2026-01-31 13:19:28 | INFO     | SmartParser | [green]✓[/green] 转写完成: 如愿降调视频.mp4
+2026-01-31 13:19:28 | INFO     | SmartParser | [green]✓[/green] 已保存: 如愿降调视频.md
+2026-01-31 13:19:28 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [document]: 托育培训项目实施方案0115.docx
+2026-01-31 13:19:28 | INFO     | SmartParser | 正在解析文档: 托育培训项目实施方案0115.docx
+2026-01-31 13:19:28 | INFO     | SmartParser | [green]✓[/green] 文档解析完成: 托育培训项目实施方案0115.docx
+2026-01-31 13:19:28 | INFO     | SmartParser | [green]✓[/green] 已保存: 托育培训项目实施方案0115.md
+2026-01-31 13:19:28 | INFO     | SmartParser | [green]●[/green] 正在监听文件夹: E:\DEV\ETLChina\SmartCourseEngine\SmartParser\input_materials
+2026-01-31 13:19:28 | INFO     | SmartParser | [dim]按 Ctrl+C 停止程序[/dim]
+2026-01-31 13:19:40 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [video]: 黄黄的故事第二季.mov
+2026-01-31 13:19:40 | INFO     | SmartParser | 正在转写: 黄黄的故事第二季.mov
+2026-01-31 13:19:40 | INFO     | SmartParser | 正在从视频提取音频...
+2026-01-31 13:19:40 | ERROR    | SmartParser | 音频提取失败: MoviePy error: the file E:\DEV\ETLChina\SmartCourseEngine\SmartParser\input_materials\黄黄的故事第二季.mov could not be found!
+Please check that you entered the correct path.
+2026-01-31 13:21:44 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [video]: AI可视化监管.mp4
+2026-01-31 13:21:44 | INFO     | SmartParser | 正在转写: AI可视化监管.mp4
+2026-01-31 13:21:44 | INFO     | SmartParser | 正在从视频提取音频...
+2026-01-31 13:21:45 | INFO     | SmartParser | [green]✓[/green] 转写完成: AI可视化监管.mp4
+2026-01-31 13:21:45 | INFO     | SmartParser | [green]✓[/green] 已保存: AI可视化监管.md
+2026-01-31 13:22:05 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [video]: 考生端操作流程介绍.mp4
+2026-01-31 13:22:05 | INFO     | SmartParser | 正在转写: 考生端操作流程介绍.mp4
+2026-01-31 13:22:05 | INFO     | SmartParser | 正在从视频提取音频...
+2026-01-31 13:22:22 | INFO     | SmartParser | [green]✓[/green] 转写完成: 考生端操作流程介绍.mp4
+2026-01-31 13:22:22 | INFO     | SmartParser | [green]✓[/green] 已保存: 考生端操作流程介绍.md
+2026-01-31 13:30:59 | WARNING  | SmartParser | [yellow]⚠[/yellow] 不支持的文件类型: 项目情况汇报.pptx
+2026-01-31 13:31:25 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [document]: 托育服务人才队伍继续教育试点工作方案-241029.docx
+2026-01-31 13:31:25 | INFO     | SmartParser | 正在解析文档: 托育服务人才队伍继续教育试点工作方案-241029.docx
+2026-01-31 13:31:25 | INFO     | SmartParser | [green]✓[/green] 文档解析完成: 托育服务人才队伍继续教育试点工作方案-241029.docx
+2026-01-31 13:31:25 | INFO     | SmartParser | [green]✓[/green] 已保存: 托育服务人才队伍继续教育试点工作方案-241029.md
+2026-01-31 13:31:32 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [document]: 3.托育服务人才队伍继续教育专项计划工作方案.doc
+2026-01-31 13:31:32 | INFO     | SmartParser | 正在解析文档: 3.托育服务人才队伍继续教育专项计划工作方案.doc
+2026-01-31 13:31:32 | ERROR    | SmartParser | [red]✗[/red] 文档解析失败 [3.托育服务人才队伍继续教育专项计划工作方案.doc]: File format not allowed: 3.托育服务人才队伍继续教育专项计划工作方案.doc
+2026-01-31 13:31:33 | WARNING  | SmartParser | [yellow]⚠[/yellow] 不支持的文件类型: 国家卫健委托育从业人员继续教育培训大纲0905.xlsx
+2026-01-31 13:31:34 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [document]: 托育从业人员能力提升项目申报方案.docx
+2026-01-31 13:31:34 | INFO     | SmartParser | 正在解析文档: 托育从业人员能力提升项目申报方案.docx
+2026-01-31 13:31:34 | INFO     | SmartParser | [green]✓[/green] 文档解析完成: 托育从业人员能力提升项目申报方案.docx
+2026-01-31 13:31:34 | INFO     | SmartParser | [green]✓[/green] 已保存: 托育从业人员能力提升项目申报方案.md
+2026-01-31 13:31:35 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [document]: 托育师继续教育规定0606.docx
+2026-01-31 13:31:35 | INFO     | SmartParser | 正在解析文档: 托育师继续教育规定0606.docx
+2026-01-31 13:31:35 | INFO     | SmartParser | [green]✓[/green] 文档解析完成: 托育师继续教育规定0606.docx
+2026-01-31 13:31:35 | INFO     | SmartParser | [green]✓[/green] 已保存: 托育师继续教育规定0606.md
+2026-01-31 13:31:36 | INFO     | SmartParser | [blue]→[/blue] 开始处理 [document]: 托育师继续教育培训机构管理办法（试行）.docx
+2026-01-31 13:31:36 | INFO     | SmartParser | 正在解析文档: 托育师继续教育培训机构管理办法（试行）.docx
+2026-01-31 13:31:36 | INFO     | SmartParser | [green]✓[/green] 文档解析完成: 托育师继续教育培训机构管理办法（试行）.docx
+2026-01-31 13:31:36 | INFO     | SmartParser | [green]✓[/green] 已保存: 托育师继续教育培训机构管理办法（试行）.md
+2026-01-31 13:31:37 | WARNING  | SmartParser | [yellow]⚠[/yellow] 不支持的文件类型: 托育师职业相关文件梳理.xlsx
+2026-01-31 13:31:38 | WARNING  | SmartParser | [yellow]⚠[/yellow] 不支持的文件类型: 专委会名单及职责.xlsx

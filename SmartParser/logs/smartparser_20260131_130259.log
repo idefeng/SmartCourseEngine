@@ -1,0 +1,7 @@
+2026-01-31 13:02:59 | WARNING  | SmartParser | [yellow]⚠[/yellow] Docling 未安装，文档解析功能不可用
+2026-01-31 13:02:59 | WARNING  | SmartParser | [yellow]⚠[/yellow] faster-whisper 未安装，语音转写功能不可用
+2026-01-31 13:02:59 | WARNING  | SmartParser | [yellow]⚠[/yellow] PaddleOCR 未安装，图片 OCR 功能不可用
+2026-01-31 13:02:59 | INFO     | SmartParser | [green]●[/green] 正在监听文件夹: E:\DEV\ETLChina\SmartCourseEngine\SmartParser\input_materials
+2026-01-31 13:02:59 | INFO     | SmartParser | [dim]按 Ctrl+C 停止程序[/dim]
+2026-01-31 13:03:23 | INFO     | SmartParser | 
+[yellow]正在停止...[/yellow]

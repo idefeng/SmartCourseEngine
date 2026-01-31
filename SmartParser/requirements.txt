@@ -1,0 +1,51 @@
+# SmartParser 依赖列表
+
+# ========== 模块 1: 文件解析 ==========
+# 文件系统监控
+watchdog>=3.0.0
+
+# PDF/Word 文档解析 (IBM docling)
+docling>=2.0.0
+
+# 语音转写 (OpenAI Whisper 的高效实现)
+faster-whisper>=1.0.0
+
+# 图片 OCR (PaddleOCR)
+paddlepaddle
+paddleocr
+
+# 文件类型检测 (Windows 版本)
+python-magic-bin>=0.4.14
+
+# 美化日志输出
+rich>=13.0.0
+
+# 视频处理 (提取音频)
+moviepy==1.0.3
+
+# 音频处理
+pydub>=0.25.1
+
+# ========== 模块 2: 知识管理 ==========
+# LangChain 核心框架
+langchain>=0.1.0
+langchain-community>=0.0.10
+langchain-openai>=0.0.5
+langchain-text-splitters>=0.0.1
+
+# 向量数据库
+chromadb>=0.4.0
+
+# OpenAI 兼容 API
+openai>=1.0.0
+
+# 其他工具
+tiktoken>=0.5.0
+
+# ========== 模块 3: 内容生成 ==========
+# Word 文档生成
+python-docx>=1.0.0
+
+# ========== 模块 4: 可视化管理后台 ==========
+# Streamlit Web 框架
+streamlit>=1.30.0

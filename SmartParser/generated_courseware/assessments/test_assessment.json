@@ -1,0 +1,299 @@
+{
+  "assessment_id": "19c8ccdd6c62e374",
+  "title": "托育急救",
+  "description": "婴幼儿心肺复苏",
+  "course_id": "test_course",
+  "knowledge_point_id": "0d4a406afa49",
+  "knowledge_type": "practical",
+  "total_score": 100,
+  "pass_score": 60,
+  "time_limit": 20,
+  "sop_steps": [
+    {
+      "step_id": "step_1",
+      "step_number": 1,
+      "action": "确认现场安全，呼叫帮助",
+      "expected_duration": 60,
+      "criteria": [
+        {
+          "criterion_id": "f844fa107bbe",
+          "name": "步骤1操作规范性",
+          "description": "正确执行：确认现场安全，呼叫帮助",
+          "weight": 0.15,
+          "level": "major",
+          "pass_threshold": 0.6,
+          "scoring_rubric": {
+            "excellent": "操作完全正确，动作规范流畅",
+            "good": "操作基本正确，有轻微瑕疵",
+            "acceptable": "操作达到基本要求",
+            "poor": "操作不规范或遗漏关键动作"
+          },
+          "detection_hints": [
+            "检测步骤1是否完成"
+          ]
+        }
+      ],
+      "prerequisites": [],
+      "tools_required": [
+        "婴儿模拟人",
+        "计时器"
+      ],
+      "safety_notes": [
+        "按压力度控制"
+      ]
+    },
+    {
+      "step_id": "step_2",
+      "step_number": 2,
+      "action": "判断意识：轻拍婴儿足底，观察反应",
+      "expected_duration": 60,
+      "criteria": [
+        {
+          "criterion_id": "ec41d1821055",
+          "name": "步骤2操作规范性",
+          "description": "正确执行：判断意识：轻拍婴儿足底，观察反应",
+          "weight": 0.15,
+          "level": "major",
+          "pass_threshold": 0.6,
+          "scoring_rubric": {
+            "excellent": "操作完全正确，动作规范流畅",
+            "good": "操作基本正确，有轻微瑕疵",
+            "acceptable": "操作达到基本要求",
+            "poor": "操作不规范或遗漏关键动作"
+          },
+          "detection_hints": [
+            "检测步骤2是否完成"
+          ]
+        }
+      ],
+      "prerequisites": [
+        "step_1"
+      ],
+      "tools_required": [
+        "婴儿模拟人",
+        "计时器"
+      ],
+      "safety_notes": [
+        "按压力度控制"
+      ]
+    },
+    {
+      "step_id": "step_3",
+      "step_number": 3,
+      "action": "开放气道：仰头抬颏法（婴儿头部后仰角度不宜过大）",
+      "expected_duration": 60,
+      "criteria": [
+        {
+          "criterion_id": "4f7c0885d4de",
+          "name": "步骤3操作规范性",
+          "description": "正确执行：开放气道：仰头抬颏法（婴儿头部后仰角度不宜过大）",
+          "weight": 0.15,
+          "level": "major",
+          "pass_threshold": 0.6,
+          "scoring_rubric": {
+            "excellent": "操作完全正确，动作规范流畅",
+            "good": "操作基本正确，有轻微瑕疵",
+            "acceptable": "操作达到基本要求",
+            "poor": "操作不规范或遗漏关键动作"
+          },
+          "detection_hints": [
+            "检测步骤3是否完成"
+          ]
+        }
+      ],
+      "prerequisites": [
+        "step_1",
+        "step_2"
+      ],
+      "tools_required": [
+        "婴儿模拟人",
+        "计时器"
+      ],
+      "safety_notes": [
+        "按压力度控制"
+      ]
+    },
+    {
+      "step_id": "step_4",
+      "step_number": 4,
+      "action": "检查呼吸：看、听、感觉，不超过10秒",
+      "expected_duration": 60,
+      "criteria": [
+        {
+          "criterion_id": "743fd217fc24",
+          "name": "步骤4操作规范性",
+          "description": "正确执行：检查呼吸：看、听、感觉，不超过10秒",
+          "weight": 0.15,
+          "level": "major",
+          "pass_threshold": 0.6,
+          "scoring_rubric": {
+            "excellent": "操作完全正确，动作规范流畅",
+            "good": "操作基本正确，有轻微瑕疵",
+            "acceptable": "操作达到基本要求",
+            "poor": "操作不规范或遗漏关键动作"
+          },
+          "detection_hints": [
+            "检测步骤4是否完成"
+          ]
+        }
+      ],
+      "prerequisites": [
+        "step_1",
+        "step_2",
+        "step_3"
+      ],
+      "tools_required": [
+        "婴儿模拟人",
+        "计时器"
+      ],
+      "safety_notes": [
+        "按压力度控制"
+      ]
+    },
+    {
+      "step_id": "step_5",
+      "step_number": 5,
+      "action": "胸外按压：",
+      "expected_duration": 60,
+      "criteria": [
+        {
+          "criterion_id": "72509f661eb7",
+          "name": "步骤5操作规范性",
+          "description": "正确执行：胸外按压：",
+          "weight": 0.15,
+          "level": "major",
+          "pass_threshold": 0.6,
+          "scoring_rubric": {
+            "excellent": "操作完全正确，动作规范流畅",
+            "good": "操作基本正确，有轻微瑕疵",
+            "acceptable": "操作达到基本要求",
+            "poor": "操作不规范或遗漏关键动作"
+          },
+          "detection_hints": [
+            "检测步骤5是否完成"
+          ]
+        }
+      ],
+      "prerequisites": [
+        "step_1",
+        "step_2",
+        "step_3",
+        "step_4"
+      ],
+      "tools_required": [
+        "婴儿模拟人",
+        "计时器"
+      ],
+      "safety_notes": [
+        "按压力度控制"
+      ]
+    },
+    {
+      "step_id": "step_6",
+      "step_number": 6,
+      "action": "人工呼吸：口对口鼻人工呼吸",
+      "expected_duration": 60,
+      "criteria": [
+        {
+          "criterion_id": "0f9ee1890809",
+          "name": "步骤6操作规范性",
+          "description": "正确执行：人工呼吸：口对口鼻人工呼吸",
+          "weight": 0.15,
+          "level": "major",
+          "pass_threshold": 0.6,
+          "scoring_rubric": {
+            "excellent": "操作完全正确，动作规范流畅",
+            "good": "操作基本正确，有轻微瑕疵",
+            "acceptable": "操作达到基本要求",
+            "poor": "操作不规范或遗漏关键动作"
+          },
+          "detection_hints": [
+            "检测步骤6是否完成"
+          ]
+        }
+      ],
+      "prerequisites": [
+        "step_1",
+        "step_2",
+        "step_3",
+        "step_4",
+        "step_5"
+      ],
+      "tools_required": [
+        "婴儿模拟人",
+        "计时器"
+      ],
+      "safety_notes": [
+        "按压力度控制"
+      ]
+    },
+    {
+      "step_id": "step_7",
+      "step_number": 7,
+      "action": "持续进行，每2分钟评估一次",
+      "expected_duration": 60,
+      "criteria": [
+        {
+          "criterion_id": "94ba0fcc1e14",
+          "name": "步骤7操作规范性",
+          "description": "正确执行：持续进行，每2分钟评估一次",
+          "weight": 0.15,
+          "level": "major",
+          "pass_threshold": 0.6,
+          "scoring_rubric": {
+            "excellent": "操作完全正确，动作规范流畅",
+            "good": "操作基本正确，有轻微瑕疵",
+            "acceptable": "操作达到基本要求",
+            "poor": "操作不规范或遗漏关键动作"
+          },
+          "detection_hints": [
+            "检测步骤7是否完成"
+          ]
+        }
+      ],
+      "prerequisites": [
+        "step_1",
+        "step_2",
+        "step_3",
+        "step_4",
+        "step_5",
+        "step_6"
+      ],
+      "tools_required": [
+        "婴儿模拟人",
+        "计时器"
+      ],
+      "safety_notes": [
+        "按压力度控制"
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "criterion_id": "f00bbec25b16",
+      "name": "操作完整性",
+      "description": "所有步骤均已完成",
+      "weight": 0.1,
+      "level": "major",
+      "pass_threshold": 0.6,
+      "scoring_rubric": {},
+      "detection_hints": [
+        "检查所有步骤是否完成"
+      ]
+    },
+    {
+      "criterion_id": "8cc58dc97fec",
+      "name": "时间控制",
+      "description": "在规定时间（20分钟）内完成",
+      "weight": 0.1,
+      "level": "minor",
+      "pass_threshold": 0.5,
+      "scoring_rubric": {},
+      "detection_hints": [
+        "检查完成时间"
+      ]
+    }
+  ],
+  "created_at": "2026-01-31T23:23:11.273396",
+  "updated_at": "2026-01-31T23:23:11.273396"
+}

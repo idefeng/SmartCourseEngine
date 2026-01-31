@@ -1,0 +1,188 @@
+# =============================================================================
+# SmartCourseEngine Docker Compose
+# =============================================================================
+# 一键启动完整系统: App + Redis + Celery Worker + Flower 监控
+#
+# 使用方法:
+#   docker-compose up -d          # 后台启动
+#   docker-compose logs -f app    # 查看日志
+#   docker-compose down           # 停止服务
+#
+# GPU 支持:
+#   docker-compose --profile gpu up -d
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Redis - 消息队列和缓存
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: smartcourse-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartcourse-network
+
+  # ---------------------------------------------------------------------------
+  # 主应用 - Streamlit Web 界面
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: smartcourse-app
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - HEYGEN_API_KEY=${HEYGEN_API_KEY:-}
+      - API_BASE_URL=${API_BASE_URL:-https://api.deepseek.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config.json:/app/config.json:rw
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - smartcourse-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8501/_stcore/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker - 异步任务处理
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: smartcourse-worker
+    restart: unless-stopped
+    command: celery -A tasks worker --loglevel=info --concurrency=2
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - HEYGEN_API_KEY=${HEYGEN_API_KEY:-}
+      - API_BASE_URL=${API_BASE_URL:-https://api.deepseek.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - smartcourse-network
+
+  # ---------------------------------------------------------------------------
+  # Flower - Celery 任务监控面板
+  # ---------------------------------------------------------------------------
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: smartcourse-flower
+    restart: unless-stopped
+    command: celery -A tasks flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - worker
+    networks:
+      - smartcourse-network
+
+  # ---------------------------------------------------------------------------
+  # Ollama - 本地 LLM (可选)
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: smartcourse-ollama
+    restart: unless-stopped
+    profiles:
+      - local-llm
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - smartcourse-network
+    # GPU 支持 (需要 nvidia-container-toolkit)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+
+  # ---------------------------------------------------------------------------
+  # 备份服务 - 定时备份数据
+  # ---------------------------------------------------------------------------
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: smartcourse-backup
+    restart: unless-stopped
+    profiles:
+      - backup
+    command: >
+      sh -c "while true; do
+        python scripts/backup.py;
+        sleep 86400;
+      done"
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    networks:
+      - smartcourse-network
+
+# =============================================================================
+# 数据卷
+# =============================================================================
+volumes:
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+# =============================================================================
+# 网络
+# =============================================================================
+networks:
+  smartcourse-network:
+    driver: bridge

@@ -956,6 +956,419 @@ def render_generate_tab():
 
 
 # ============================================================================
+# 互动学习标签页
+# ============================================================================
+def render_interactive_learning_tab():
+    """渲染互动学习标签页"""
+    st.markdown("### 🎮 互动学习模式")
+    st.markdown("体验\"学-测-补\"自适应学习闭环：视频学习 → 知识检测 → 智能补漏")
+    
+    # 初始化交互引擎
+    try:
+        from interaction_engine import (
+            InteractionEngine, 
+            LearningSession, 
+            session_to_dict, 
+            dict_to_session,
+            AnswerResult
+        )
+        engine = InteractionEngine()
+    except Exception as e:
+        st.error(f"交互引擎初始化失败: {e}")
+        return
+    
+    # 检查是否有课件
+    if "last_courseware" not in st.session_state:
+        st.warning("⚠️ 请先在「课件生成」标签页生成课件")
+        return
+    
+    courseware = st.session_state.last_courseware
+    topic = courseware.get("topic", "未命名课程")
+    
+    # 初始化学习会话
+    if "learning_session" not in st.session_state:
+        session = engine.create_session(topic)
+        st.session_state.learning_session = session_to_dict(session)
+    
+    session = dict_to_session(st.session_state.learning_session)
+    
+    # 课程信息卡
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1.5rem; border-radius: 1rem; color: white; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">📚 {topic}</h3>
+        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
+            进度: 第 {session.current_section_index + 1} 节 / 共 {len(courseware.get('scripts', []))} 节
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 章节选择
+    scripts = courseware.get("scripts", [])
+    section_names = [s.get("section", f"第{i+1}节") for i, s in enumerate(scripts)]
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        selected_section = st.selectbox(
+            "选择章节",
+            range(len(section_names)),
+            format_func=lambda x: f"{'🔓' if x in session.unlocked_sections else '🔒'} {section_names[x]}",
+            index=session.current_section_index
+        )
+    
+    with col2:
+        if selected_section not in session.unlocked_sections:
+            st.warning("🔒 未解锁")
+        else:
+            st.success("🔓 已解锁")
+    
+    if selected_section not in session.unlocked_sections:
+        st.info("💡 完成前面章节的练习题才能解锁此章节")
+        return
+    
+    # 视频/内容区域
+    st.markdown("---")
+    st.markdown(f"### 📖 {section_names[selected_section]}")
+    
+    # 显示讲解内容
+    if selected_section < len(scripts):
+        script_content = scripts[selected_section].get("content", "")
+        
+        with st.expander("📝 讲解内容", expanded=True):
+            st.markdown(script_content)
+        
+        # 检查视频
+        if "generated_videos" in st.session_state:
+            videos = st.session_state.generated_videos
+            if selected_section < len(videos) and videos[selected_section]:
+                st.video(videos[selected_section])
+    
+    # 练习题区域
+    st.markdown("---")
+    st.markdown("### ✍️ 知识检测")
+    
+    quiz = engine.get_quiz_for_section(courseware, selected_section)
+    
+    if not quiz:
+        st.info("本节暂无练习题")
+        # 自动解锁下一节
+        if selected_section + 1 not in session.unlocked_sections:
+            session.unlocked_sections.append(selected_section + 1)
+            st.session_state.learning_session = session_to_dict(session)
+        return
+    
+    knowledge_point = quiz.get("knowledge_point", "")
+    st.markdown(f"**知识点**: {knowledge_point}")
+    
+    # 答题状态键
+    quiz_key = f"quiz_{selected_section}"
+    
+    # 检查是否已答过（本会话内）
+    answered_key = f"answered_{quiz_key}"
+    
+    if answered_key not in st.session_state:
+        st.session_state[answered_key] = False
+        st.session_state[f"result_{quiz_key}"] = None
+    
+    # 单选题
+    single_choice = quiz.get("single_choice", {})
+    if single_choice:
+        st.markdown("#### 📋 单选题")
+        st.markdown(single_choice.get("question", ""))
+        
+        options = single_choice.get("options", {})
+        option_list = [f"{k}. {v}" for k, v in options.items()]
+        
+        if not st.session_state[answered_key]:
+            user_answer = st.radio(
+                "请选择答案:",
+                list(options.keys()),
+                format_func=lambda x: f"{x}. {options[x]}",
+                key=f"radio_{quiz_key}"
+            )
+            
+            if st.button("✅ 提交答案", key=f"submit_{quiz_key}", type="primary"):
+                is_correct, attempt = engine.check_answer(
+                    session, quiz, user_answer, "single_choice"
+                )
+                
+                st.session_state[answered_key] = True
+                st.session_state[f"result_{quiz_key}"] = {
+                    "is_correct": is_correct,
+                    "user_answer": user_answer,
+                    "correct_answer": single_choice.get("answer"),
+                    "explanation": single_choice.get("explanation", "")
+                }
+                
+                # 如果答错，生成错因分析
+                if not is_correct:
+                    error_analysis = engine.analyze_error(quiz, user_answer, "single_choice")
+                    st.session_state[f"result_{quiz_key}"]["error_analysis"] = error_analysis
+                
+                # 更新会话
+                st.session_state.learning_session = session_to_dict(session)
+                st.rerun()
+        
+        else:
+            # 显示结果
+            result = st.session_state[f"result_{quiz_key}"]
+            
+            if result["is_correct"]:
+                st.success("🎉 回答正确！")
+                st.markdown(f"**解析**: {result['explanation']}")
+                
+                # 解锁下一节
+                if selected_section + 1 not in session.unlocked_sections:
+                    session.unlocked_sections.append(selected_section + 1)
+                    st.session_state.learning_session = session_to_dict(session)
+                    st.balloons()
+                    st.success(f"🔓 已解锁下一节: {section_names[selected_section + 1] if selected_section + 1 < len(section_names) else '课程完成！'}")
+            else:
+                st.error(f"❌ 回答错误 (正确答案: {result['correct_answer']})")
+                
+                # 显示错因分析
+                if "error_analysis" in result:
+                    st.markdown("#### 🔍 智能错因分析")
+                    st.info(result["error_analysis"])
+                
+                # 检查是否需要补漏
+                if engine.needs_remediation(session, knowledge_point):
+                    st.markdown("#### 📚 个性化补漏")
+                    st.warning("检测到您在此知识点连续答错，为您推荐补充学习材料：")
+                    
+                    # 获取补漏内容
+                    error_attempts = [
+                        a for a in session.quiz_attempts 
+                        if a.knowledge_point == knowledge_point and a.result == AnswerResult.INCORRECT
+                    ]
+                    remediation = engine.get_remediation_content(knowledge_point, error_attempts)
+                    
+                    with st.expander("📖 补充学习材料", expanded=True):
+                        st.markdown(remediation.content)
+                        st.caption(f"来源: {remediation.source}")
+                    
+                    # 标记已展示补漏
+                    if knowledge_point in session.knowledge_progress:
+                        session.knowledge_progress[knowledge_point].remediation_shown = True
+                        st.session_state.learning_session = session_to_dict(session)
+            
+            # 重试按钮
+            if st.button("🔄 重新作答", key=f"retry_{quiz_key}"):
+                st.session_state[answered_key] = False
+                st.session_state[f"result_{quiz_key}"] = None
+                st.rerun()
+    
+    # 学习进度概览
+    st.markdown("---")
+    st.markdown("### 📈 本次学习进度")
+    
+    progress_cols = st.columns(4)
+    with progress_cols[0]:
+        total_attempts = len(session.quiz_attempts)
+        st.metric("答题次数", total_attempts)
+    
+    with progress_cols[1]:
+        correct_count = sum(1 for a in session.quiz_attempts if a.result == AnswerResult.CORRECT)
+        st.metric("正确数", correct_count)
+    
+    with progress_cols[2]:
+        accuracy = correct_count / total_attempts * 100 if total_attempts > 0 else 0
+        st.metric("正确率", f"{accuracy:.0f}%")
+    
+    with progress_cols[3]:
+        unlocked = len(session.unlocked_sections)
+        total = len(scripts)
+        st.metric("解锁进度", f"{unlocked}/{total}")
+
+
+# ============================================================================
+# 学习报告标签页
+# ============================================================================
+def render_learning_report_tab():
+    """渲染学习报告标签页"""
+    st.markdown("### 📊 学习数据看板")
+    st.markdown("查看学习表现分析、知识点掌握情况，生成个性化学习诊断书")
+    
+    # 检查是否有学习会话
+    if "learning_session" not in st.session_state:
+        st.info("📝 暂无学习记录，请先在「互动学习」标签页进行学习")
+        return
+    
+    try:
+        from interaction_engine import (
+            InteractionEngine, 
+            dict_to_session, 
+            LearningReportPDF,
+            AnswerResult
+        )
+        engine = InteractionEngine()
+        session = dict_to_session(st.session_state.learning_session)
+    except Exception as e:
+        st.error(f"加载学习数据失败: {e}")
+        return
+    
+    # 生成报告
+    report = engine.generate_learning_report(session)
+    summary = report.get("summary", {})
+    
+    # 总体统计卡片
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
+                padding: 1.5rem; border-radius: 1rem; color: white; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">📚 {report.get('course_topic', '课程学习')}</h3>
+        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
+            学习时长: {summary.get('total_duration_minutes', 0):.1f} 分钟 | 
+            完成章节: {summary.get('sections_completed', 0)} 节
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 核心指标
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "总答题数",
+            summary.get("total_questions", 0),
+            help="本次学习回答的题目总数"
+        )
+    
+    with col2:
+        st.metric(
+            "正确数",
+            summary.get("correct_answers", 0),
+            delta=f"+{summary.get('correct_answers', 0)}" if summary.get('correct_answers', 0) > 0 else None
+        )
+    
+    with col3:
+        accuracy = summary.get("overall_accuracy", 0) * 100
+        st.metric(
+            "正确率",
+            f"{accuracy:.0f}%",
+            delta="优秀" if accuracy >= 80 else "良好" if accuracy >= 60 else "待提升"
+        )
+    
+    with col4:
+        st.metric(
+            "学习时长",
+            f"{summary.get('total_duration_minutes', 0):.0f}min"
+        )
+    
+    st.markdown("---")
+    
+    # 知识点掌握情况
+    st.markdown("### 📖 知识点掌握情况")
+    
+    knowledge_breakdown = report.get("knowledge_breakdown", [])
+    
+    if knowledge_breakdown:
+        for ks in knowledge_breakdown:
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                accuracy = ks.get("accuracy_rate", 0)
+                mastery = ks.get("mastery_level", 0)
+                
+                # 进度条颜色
+                if mastery >= 0.8:
+                    bar_text = "掌握良好 ✅"
+                elif mastery >= 0.6:
+                    bar_text = "基本掌握 📖"
+                else:
+                    bar_text = "需要加强 ⚠️"
+                
+                st.markdown(f"**{ks.get('knowledge_point', '未知')}**")
+                st.progress(mastery, text=bar_text)
+            
+            with col2:
+                st.markdown(f"正确率: **{accuracy * 100:.0f}%**")
+                st.caption(f"练习 {ks.get('total_attempts', 0)} 次")
+    else:
+        st.info("暂无知识点数据")
+    
+    st.markdown("---")
+    
+    # 薄弱点和建议
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### ⚠️ 薄弱知识点")
+        weak_points = report.get("weak_points", [])
+        if weak_points:
+            for wp in weak_points:
+                st.markdown(f"- 📌 {wp}")
+        else:
+            st.success("🎉 没有明显薄弱点，继续保持！")
+    
+    with col2:
+        st.markdown("### ✅ 优势知识点")
+        strong_points = report.get("strong_points", [])
+        if strong_points:
+            for sp in strong_points:
+                st.markdown(f"- ⭐ {sp}")
+        else:
+            st.info("继续学习，积累更多优势知识点")
+    
+    st.markdown("---")
+    
+    # 学习建议
+    st.markdown("### 💡 个性化学习建议")
+    recommendations = report.get("recommendations", [])
+    for rec in recommendations:
+        st.info(rec)
+    
+    st.markdown("---")
+    
+    # 导出报告
+    st.markdown("### 📥 导出学习诊断书")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📄 生成 PDF 报告", type="primary", use_container_width=True):
+            try:
+                pdf_generator = LearningReportPDF()
+                
+                base_dir = Path(__file__).parent
+                output_dir = base_dir / "generated_courseware"
+                output_dir.mkdir(exist_ok=True)
+                
+                safe_topic = report.get("course_topic", "学习报告").replace("/", "_").replace("\\", "_")
+                pdf_path = output_dir / f"学习诊断书_{safe_topic}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                
+                result = pdf_generator.generate(report, str(pdf_path))
+                
+                if result:
+                    st.success(f"✅ PDF 报告已生成!")
+                    
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label="📥 下载 PDF 报告",
+                            data=f.read(),
+                            file_name=pdf_path.name,
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                else:
+                    st.warning("PDF 生成功能需要安装 reportlab 库")
+                    st.code("pip install reportlab")
+            except Exception as e:
+                st.error(f"PDF 生成失败: {e}")
+    
+    with col2:
+        # JSON 导出
+        if st.button("📋 导出 JSON 数据", use_container_width=True):
+            json_str = json.dumps(report, ensure_ascii=False, indent=2)
+            st.download_button(
+                label="📥 下载 JSON",
+                data=json_str,
+                file_name=f"学习报告_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+
+
+# ============================================================================
 # 主程序
 # ============================================================================
 def main():
@@ -965,12 +1378,18 @@ def main():
     
     # 主标题
     st.markdown('<h1 class="main-header">🎓 SmartCourseEngine</h1>', unsafe_allow_html=True)
-    st.markdown("**智能教学资源管理平台** - 一站式素材解析、知识管理、课件生成")
+    st.markdown("**智能教学资源管理平台** - 一站式素材解析、知识管理、课件生成、自适应学习")
     
     st.markdown("---")
     
     # 标签页
-    tab1, tab2, tab3 = st.tabs(["📁 素材入库", "🧠 知识大脑", "✨ 课件生成"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📁 素材入库", 
+        "🧠 知识大脑", 
+        "✨ 课件生成",
+        "🎮 互动学习",
+        "📊 学习报告"
+    ])
     
     with tab1:
         render_material_tab()
@@ -980,7 +1399,14 @@ def main():
     
     with tab3:
         render_generate_tab()
+    
+    with tab4:
+        render_interactive_learning_tab()
+    
+    with tab5:
+        render_learning_report_tab()
 
 
 if __name__ == "__main__":
     main()
+

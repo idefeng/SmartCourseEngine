@@ -56,10 +56,18 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # RTX 4060 优化 (engine_local.py)
+      - CUDA_VISIBLE_DEVICES=0
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
       - ./config.json:/app/config.json:rw
+      # 本地视频生成 (engine_local.py)
+      - ./pretrained_weights:/app/pretrained_weights:ro
+      - ./temp_upload:/app/temp_upload
+      - ./output_videos:/app/output_videos
+      - ./tools:/app/tools:ro
+      - ./voices:/app/voices:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -70,6 +78,23 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # ---------------------------------------------------------------------------
+  # 主应用 (GPU版本) - 支持本地视频生成
+  # ---------------------------------------------------------------------------
+  app-gpu:
+    extends:
+      service: app
+    container_name: smartcourse-app-gpu
+    profiles:
+      - gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
 
   # ---------------------------------------------------------------------------
   # Celery Worker - 异步任务处理
@@ -91,14 +116,39 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CUDA_VISIBLE_DEVICES=0
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      # 本地视频生成 (engine_local.py)
+      - ./pretrained_weights:/app/pretrained_weights:ro
+      - ./temp_upload:/app/temp_upload
+      - ./output_videos:/app/output_videos
+      - ./tools:/app/tools:ro
+      - ./voices:/app/voices:ro
     depends_on:
       redis:
         condition: service_healthy
     networks:
       - smartcourse-network
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker (GPU版本) - 支持本地视频生成任务
+  # ---------------------------------------------------------------------------
+  worker-gpu:
+    extends:
+      service: worker
+    container_name: smartcourse-worker-gpu
+    profiles:
+      - gpu
+    command: celery -A tasks worker --loglevel=info --concurrency=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
 
   # ---------------------------------------------------------------------------
   # Flower - Celery 任务监控面板

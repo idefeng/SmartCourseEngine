@@ -41,8 +41,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     tesseract-ocr \
     tesseract-ocr-chi-sim \
+    # OpenCV/视觉处理依赖 (engine_local.py)
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     # 其他工具
     git \
+    git-lfs \
     curl \
     wget \
     vim \
@@ -73,7 +77,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
     # Celery 和 Redis
     pip install --no-cache-dir celery[redis] redis flower && \
     # 可选: 本地 LLM 支持
-    pip install --no-cache-dir ollama
+    pip install --no-cache-dir ollama && \
+    # xformers (RTX 40系列优化，engine_local.py)
+    pip install --no-cache-dir xformers
 
 # -----------------------------------------------------------------------------
 # 阶段3: 生产镜像
@@ -85,13 +91,17 @@ WORKDIR /app
 # 复制应用代码
 COPY --chown=appuser:appuser . .
 
-# 创建必要目录
+# 创建必要目录 (包含 engine_local.py 所需目录)
 RUN mkdir -p /app/data/chroma_db \
-             /app/data/output_markdown \
-             /app/data/generated_courseware \
-             /app/data/standards_library \
-             /app/data/backups \
-             /app/logs \
+    /app/data/output_markdown \
+    /app/data/generated_courseware \
+    /app/data/standards_library \
+    /app/data/backups \
+    /app/logs \
+    /app/pretrained_weights \
+    /app/temp_upload \
+    /app/output_videos/local_gen \
+    /app/tools \
     && chown -R appuser:appuser /app
 
 # 切换到非 root 用户

@@ -373,7 +373,11 @@ class LocalInferenceEngine:
             return True
             
         except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
+            # Windows 使用 GBK 编码，需要兼容处理
+            try:
+                error_msg = e.stderr.decode('utf-8', errors='replace') if e.stderr else str(e)
+            except:
+                error_msg = str(e)
             logger.error(f"CosyVoice 推理失败: {error_msg}")
             return False
             

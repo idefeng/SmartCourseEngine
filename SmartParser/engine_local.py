@@ -7,6 +7,84 @@
 集成 CosyVoice (语音合成) 和 LivePortrait (视频驱动) 的本地推理核心逻辑。
 针对 NVIDIA Ada 架构 (RTX 40系列) 和 RTX 4060 (8GB VRAM) 进行了专项性能调优。
 
+================================================================================
+模型权重下载说明
+================================================================================
+
+【1. CosyVoice 语音合成模型】
+
+    下载链接:
+    - HuggingFace: https://huggingface.co/FunAudioLLM/CosyVoice-300M
+    - ModelScope:  https://modelscope.cn/models/iic/CosyVoice-300M
+    
+    推荐模型 (按需选择):
+    - CosyVoice-300M       : 基础模型 (推荐)
+    - CosyVoice-300M-SFT   : 微调版本
+    - CosyVoice-300M-Instruct : 指令跟随版本
+    - CosyVoice2-0.5B      : 增强版本 (显存需求更高)
+    
+    下载命令 (HuggingFace):
+    ```bash
+    pip install huggingface_hub
+    python -c "from huggingface_hub import snapshot_download; snapshot_download('FunAudioLLM/CosyVoice-300M', local_dir='pretrained_weights/CosyVoice-300M')"
+    ```
+
+【2. LivePortrait 视频驱动模型】
+
+    下载链接:
+    - HuggingFace: https://huggingface.co/KwaiVGI/LivePortrait
+    - Google Drive: 见官方 GitHub README
+    - 百度网盘: 见官方 GitHub README
+    
+    GitHub 仓库: https://github.com/KwaiVGI/LivePortrait
+    
+    下载命令 (HuggingFace, 需安装 Git LFS):
+    ```bash
+    git lfs install
+    git clone https://huggingface.co/KwaiVGI/LivePortrait pretrained_weights/liveportrait
+    ```
+
+================================================================================
+文件夹结构 (pretrained_weights/)
+================================================================================
+
+    SmartParser/
+    ├── pretrained_weights/
+    │   ├── CosyVoice-300M/              # CosyVoice 语音合成模型
+    │   │   ├── cosyvoice.yaml
+    │   │   ├── campplus.onnx
+    │   │   ├── speech_tokenizer_v1.onnx
+    │   │   ├── spk2info.pt
+    │   │   └── llm.pt / flow.pt / hift.pt
+    │   │
+    │   └── liveportrait/                # LivePortrait 视频驱动模型
+    │       ├── base_models/
+    │       │   ├── appearance_feature_extractor.pth
+    │       │   ├── motion_extractor.pth
+    │       │   ├── warping_module.pth
+    │       │   └── spade_generator.pth
+    │       ├── retargeting_models/
+    │       │   └── stitching_retargeting_module.pth
+    │       └── insightface/             # 人脸检测模型
+    │           └── models/buffalo_l/
+    │
+    ├── tools/
+    │   ├── CosyVoice/cli.py             # CosyVoice 推理脚本
+    │   └── LivePortrait/inference.py    # LivePortrait 推理脚本
+    │
+    ├── temp_upload/                     # Streamlit 上传的驱动图
+    ├── voices/                          # 参考音色 wav 文件
+    └── output_videos/local_gen/         # 生成的视频输出
+
+================================================================================
+快速验证命令
+================================================================================
+
+    # 检查权重是否完整
+    python -c "from pathlib import Path; p=Path('pretrained_weights'); print('CosyVoice:', (p/'CosyVoice-300M').exists()); print('LivePortrait:', (p/'liveportrait').exists())"
+
+================================================================================
+
 主要功能:
 1. CUDA 环境自适配 (TF32 Tensor Core 加速)
 2. CosyVoice 语音合成 (零显存残留)
@@ -17,6 +95,7 @@
 作者: SmartCourseEngine Team
 日期: 2026-02-01
 """
+
 
 import os
 import sys

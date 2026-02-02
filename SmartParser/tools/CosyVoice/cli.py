@@ -34,18 +34,21 @@ WEIGHTS_DIR = BASE_DIR / "pretrained_weights" / "CosyVoice-300M"
 
 def setup_cosyvoice_path():
     """设置 CosyVoice 导入路径"""
-    # 尝试添加 CosyVoice 第三方依赖路径
-    matcha_path = WEIGHTS_DIR / "third_party" / "Matcha-TTS"
-    if matcha_path.exists():
-        sys.path.insert(0, str(matcha_path))
-    
     # 添加 CosyVoice 源码路径 (如果存在)
     cosyvoice_src = BASE_DIR / "CosyVoice"
     if cosyvoice_src.exists():
         sys.path.insert(0, str(cosyvoice_src))
-        matcha_in_src = cosyvoice_src / "third_party" / "Matcha-TTS"
-        if matcha_in_src.exists():
-            sys.path.insert(0, str(matcha_in_src))
+        
+        # 添加 Matcha-TTS 子模块路径 (关键!)
+        matcha_path = cosyvoice_src / "third_party" / "Matcha-TTS"
+        if matcha_path.exists():
+            sys.path.insert(0, str(matcha_path))
+            logger.info(f"已添加 Matcha-TTS 路径: {matcha_path}")
+    
+    # 尝试添加权重目录中的第三方依赖路径
+    matcha_path = WEIGHTS_DIR / "third_party" / "Matcha-TTS"
+    if matcha_path.exists():
+        sys.path.insert(0, str(matcha_path))
 
 
 def synthesize(text: str, prompt_audio: str, output_path: str, device: str = "cuda", fp16: bool = False):

@@ -1,0 +1,48 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    metrics_path: '/metrics'
+
+  - job_name: 'course-generator'
+    static_configs:
+      - targets: ['course-generator:8001']
+    metrics_path: '/metrics'
+
+  - job_name: 'video-analyzer'
+    static_configs:
+      - targets: ['video-analyzer:8002']
+    metrics_path: '/metrics'
+
+  - job_name: 'knowledge-base'
+    static_configs:
+      - targets: ['knowledge-base:8003']
+    metrics_path: '/metrics'
+
+  - job_name: 'search-engine'
+    static_configs:
+      - targets: ['search-engine:8004']
+    metrics_path: '/metrics'
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  - job_name: 'neo4j'
+    static_configs:
+      - targets: ['neo4j-exporter:2004']

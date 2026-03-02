@@ -1,0 +1,51 @@
+{
+  "name": "smartcourse-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SmartCourseEngine 管理后台",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "14.0.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "antd": "^5.12.8",
+    "@ant-design/icons": "^5.2.6",
+    "@ant-design/pro-components": "^2.6.43",
+    "@tanstack/react-query": "^5.12.2",
+    "axios": "^1.6.2",
+    "zustand": "^4.4.7",
+    "react-hook-form": "^7.48.2",
+    "zod": "^3.22.4",
+    "@hookform/resolvers": "^3.3.2",
+    "react-player": "^2.16.0",
+    "react-markdown": "^9.0.1",
+    "recharts": "^2.10.3",
+    "dayjs": "^1.11.10",
+    "lodash": "^4.17.21",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/lodash": "^4.14.202",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.4",
+    "@typescript-eslint/eslint-plugin": "^6",
+    "@typescript-eslint/parser": "^6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -105,19 +105,16 @@ export class FileUploadManager {
       const totalChunks = Math.ceil(file.size / chunkSize);
 
       // 调用API初始化上传
-      const response = await apiClient.post('/upload/init', {
-        file_name: file.name,
-        file_size: file.size,
-        chunk_size: chunkSize,
-        user_id: userId,
-        metadata,
-      }, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const formData = new FormData();
+      formData.append('file_name', file.name);
+      formData.append('file_size', file.size.toString());
+      formData.append('chunk_size', chunkSize.toString());
+      formData.append('user_id', userId.toString());
+      formData.append('metadata', JSON.stringify(metadata));
 
-      const uploadData = response.data;
+      const response = await apiClient.post('/api/v1/upload/init', formData);
+      const uploadData = response as any;
+
       const task: UploadTask = {
         ...uploadData.metadata,
         progress: 0,
@@ -213,12 +210,9 @@ export class FileUploadManager {
 
         // 上传分片
         await apiClient.post(
-          `/upload/chunk/${task.upload_id}/${chunkIndex}`,
+          `/api/v1/upload/chunk/${task.upload_id}/${chunkIndex}`,
           formData,
           {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
             timeout: this.config.timeout,
           }
         );
@@ -253,11 +247,24 @@ export class FileUploadManager {
    */
   async completeUpload(uploadId: string): Promise<UploadTask> {
     try {
-      const response = await apiClient.post(`/upload/complete/${uploadId}`);
-      const task = response.data.metadata;
+      const response = await apiClient.post(`/api/v1/upload/complete/${uploadId}`);
+    const uploadData = response as any;
+    
+    // 更新任务状态
+    const task = this.tasks.get(uploadId);
+    if (task) {
+      const updatedTask = { 
+        ...task, 
+        ...uploadData.metadata,
+        status: UploadStatus.COMPLETED 
+      };
+        this.tasks.set(uploadId, updatedTask);
+        return updatedTask;
+      }
       
-      this.tasks.set(uploadId, task);
-      return task;
+      const newTask = uploadData.metadata;
+       this.tasks.set(uploadId, newTask);
+       return newTask;
     } catch (error) {
       console.error('完成上传失败:', error);
       throw error;
@@ -269,7 +276,7 @@ export class FileUploadManager {
    */
   async cancelUpload(uploadId: string): Promise<UploadTask> {
     try {
-      const response = await apiClient.post(`/upload/cancel/${uploadId}`);
+      const response = await apiClient.post(`/api/v1/upload/cancel/${uploadId}`);
       const task = response.data.metadata;
       
       this.tasks.delete(uploadId);
@@ -287,8 +294,8 @@ export class FileUploadManager {
    */
   async getUploadStatus(uploadId: string): Promise<UploadTask> {
     try {
-      const response = await apiClient.get(`/upload/status/${uploadId}`);
-      return response.data.metadata;
+      const response = await apiClient.get(`/api/v1/upload/status/${uploadId}`);
+      return (response as any).metadata;
     } catch (error) {
       console.error('获取上传状态失败:', error);
       throw error;
@@ -300,8 +307,8 @@ export class FileUploadManager {
    */
   async getUserUploads(userId: number): Promise<UploadTask[]> {
     try {
-      const response = await apiClient.get(`/upload/user/${userId}`);
-      return response.data.uploads;
+      const response = await apiClient.get(`/api/v1/upload/user/${userId}`);
+      return (response as any).uploads;
     } catch (error) {
       console.error('获取用户上传任务失败:', error);
       throw error;

@@ -32,6 +32,20 @@ apiClient.interceptors.request.use(
 )
 
 // 响应拦截器
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // 统一处理API响应格式
@@ -49,11 +63,69 @@ apiClient.interceptors.response.use(
     // 返回数据部分
     return data.data
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
     // 统一错误处理
     if (error.response) {
       const { status, data } = error.response
       
+      // 处理Token过期 (401) - 自动刷新
+      if (status === 401 && !originalRequest._retry) {
+        if (isRefreshing) {
+          return new Promise(function(resolve, reject) {
+            failedQueue.push({resolve, reject});
+          }).then(token => {
+            originalRequest.headers['Authorization'] = 'Bearer ' + token;
+            return apiClient(originalRequest);
+          }).catch(err => {
+            return Promise.reject(err);
+          });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          const refreshToken = localStorage.getItem('refresh_token');
+          if (!refreshToken) {
+            throw new Error('No refresh token available');
+          }
+
+          // 使用新的axios实例避免拦截器循环
+          const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh?refresh_token=${refreshToken}`);
+          
+          const { data: resData } = response;
+          if (resData.success && resData.data) {
+             const { access_token, refresh_token: newRefreshToken } = resData.data;
+             
+             localStorage.setItem('token', access_token);
+             if (newRefreshToken) {
+               localStorage.setItem('refresh_token', newRefreshToken);
+             }
+             
+             apiClient.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+             originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
+             
+             processQueue(null, access_token);
+             return apiClient(originalRequest);
+          } else {
+             throw new Error('Refresh failed');
+          }
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          // 清除Token并跳转登录
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
       // 处理统一API响应格式的错误
       if (data && data.success === false) {
         const apiError = new Error(data.message || 'API请求失败')
@@ -64,9 +136,8 @@ apiClient.interceptors.response.use(
         // 根据错误代码进行特殊处理
         switch (data.error_code) {
           case '0004': // 权限不足
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login'
-            }
+            // 如果是权限不足但不是Token过期，可能需要提示
+             console.error('权限不足:', data.message)
             break
           case '0005': // 资源不存在
             console.error('资源不存在:', data.message)
@@ -81,12 +152,6 @@ apiClient.interceptors.response.use(
       
       // 处理HTTP状态码错误
       switch (status) {
-        case 401:
-          // 未授权，跳转到登录页
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login'
-          }
-          break
         case 403:
           console.error('权限不足:', data?.message)
           break
@@ -114,6 +179,19 @@ apiClient.interceptors.response.use(
 
 // API接口定义
 export const api = {
+  // 认证相关
+  auth: {
+    login: (data: any) => apiClient.post('/api/v1/auth/login', data),
+    register: (data: any) => apiClient.post('/api/v1/auth/register', data),
+    logout: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        if (typeof window !== 'undefined') window.location.href = '/login';
+        return Promise.resolve();
+    },
+    getCurrentUser: () => apiClient.get('/api/v1/auth/me'),
+  },
+
   // 课程相关
   courses: {
     // 获取课程列表

@@ -4,6 +4,7 @@
  * 提供WebSocket连接管理、消息处理、事件订阅功能
  */
 
+import { useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 
 // WebSocket消息类型
@@ -353,11 +354,11 @@ export function useWebSocket() {
   const client = getWebSocketClient();
 
   // 当用户登录状态变化时，自动连接/断开WebSocket
-  React.useEffect(() => {
+  useEffect(() => {
     if (user?.id) {
-      client.connect(user.id);
+      getWebSocketClient().connect(user.id);
     } else {
-      client.disconnect();
+      getWebSocketClient().disconnect();
     }
 
     return () => {

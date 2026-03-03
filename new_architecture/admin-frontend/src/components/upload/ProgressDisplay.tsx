@@ -35,12 +35,14 @@ interface ProgressDisplayProps {
   taskId?: string;
   showDetails?: boolean;
   compact?: boolean;
+  onAnalysisCompleted?: (taskId: string) => void;
 }
 
 const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
   taskId,
   showDetails = true,
   compact = false,
+  onAnalysisCompleted,
 }) => {
   const { getTask, getTasks } = useUpload();
   const wsClient = useWebSocket();
@@ -69,6 +71,9 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
         [task_id]: { progress: 100, message: '分析完成' },
       }));
       loadTasks(); // 重新加载任务
+      if (onAnalysisCompleted) {
+        onAnalysisCompleted(task_id);
+      }
     };
 
     const handleTaskFailed = (message: any) => {
@@ -290,7 +295,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
             <Text ellipsis style={{ flex: 1 }}>
               {selectedTask.file_name}
             </Text>
-            <Tag color={getStatusColor(selectedTask.status)} size="small">
+            <Tag color={getStatusColor(selectedTask.status)}>
               {getStatusText(selectedTask.status)}
             </Tag>
           </div>
@@ -424,7 +429,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
                         title={
                           <Space>
                             <Text>{task.file_name}</Text>
-                            <Tag color={getStatusColor(task.status)} size="small">
+                            <Tag color={getStatusColor(task.status)}>
                               {getStatusText(task.status)}
                             </Tag>
                           </Space>

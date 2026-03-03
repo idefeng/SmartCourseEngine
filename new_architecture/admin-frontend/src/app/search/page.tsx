@@ -39,6 +39,8 @@ import {
   HistoryOutlined,
   FireOutlined,
   ThunderboltOutlined,
+  ClockCircleOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
@@ -62,6 +64,16 @@ interface SearchResult {
   weighted_score?: number
 }
 
+interface SearchResponse {
+  success: boolean
+  data: {
+    results: SearchResult[]
+    total: number
+    search_type?: string
+    search_time?: string
+  }
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [searchType, setSearchType] = useState('hybrid')
@@ -80,7 +92,7 @@ export default function SearchPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   // 搜索查询
-  const { data: searchData, isLoading, refetch, isFetching } = useQuery({
+  const { data: searchData, isLoading, refetch, isFetching } = useQuery<SearchResponse>({
     queryKey: ['search', query, searchType, searchLimit, weights],
     queryFn: () => {
       if (!query.trim()) {
@@ -88,18 +100,18 @@ export default function SearchPage() {
       }
       
       if (searchType === 'hybrid') {
-        return api.search.hybridSearch(query, weights, searchLimit)
+        return api.search.hybridSearch(query, weights, searchLimit).then((res) => res.data as SearchResponse)
       } else if (searchType === 'semantic') {
-        return api.search.semanticSearch(query, searchLimit)
+        return api.search.semanticSearch(query, searchLimit).then((res) => res.data as SearchResponse)
       } else {
-        return api.search.search(query, searchType, searchLimit)
+        return api.search.search(query, searchType, searchLimit).then((res) => res.data as SearchResponse)
       }
     },
     enabled: false,
   })
 
-  const searchResults = searchData?.data?.results || []
-  const searchStats = searchData?.data || {}
+  const searchResults: SearchResult[] = searchData?.data?.results || []
+  const searchStats = searchData?.data || { results: [], total: 0 }
 
   const handleSearch = (value: string) => {
     if (!value.trim()) return
@@ -507,7 +519,7 @@ export default function SearchPage() {
                               {result.title}
                             </Title>
                             {result.search_type && (
-                              <Tag size="small" color="cyan">
+                              <Tag color="cyan">
                                 {result.search_type}
                               </Tag>
                             )}

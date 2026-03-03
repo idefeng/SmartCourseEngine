@@ -248,23 +248,27 @@ export class FileUploadManager {
   async completeUpload(uploadId: string): Promise<UploadTask> {
     try {
       const response = await apiClient.post(`/api/v1/upload/complete/${uploadId}`);
-    const uploadData = response as any;
-    
-    // 更新任务状态
-    const task = this.tasks.get(uploadId);
-    if (task) {
-      const updatedTask = { 
-        ...task, 
-        ...uploadData.metadata,
-        status: UploadStatus.COMPLETED 
-      };
+      const uploadData = response as any;
+      const metadata = uploadData.metadata || {};
+
+      // 更新任务状态
+      const task = this.tasks.get(uploadId);
+      if (task) {
+        const updatedTask = {
+          ...task,
+          ...metadata,
+          status: (metadata.status as UploadStatus) || (uploadData.status as UploadStatus) || UploadStatus.PROCESSING
+        };
         this.tasks.set(uploadId, updatedTask);
         return updatedTask;
       }
-      
-      const newTask = uploadData.metadata;
-       this.tasks.set(uploadId, newTask);
-       return newTask;
+
+      const newTask = {
+        ...metadata,
+        status: (metadata.status as UploadStatus) || (uploadData.status as UploadStatus) || UploadStatus.PROCESSING
+      } as UploadTask;
+      this.tasks.set(uploadId, newTask);
+      return newTask;
     } catch (error) {
       console.error('完成上传失败:', error);
       throw error;

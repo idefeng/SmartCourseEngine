@@ -110,7 +110,7 @@ export default function KnowledgePage() {
     queryFn: () => api.knowledge.getKnowledgePoints({ search: searchText }),
   })
 
-  const knowledgePoints = knowledgeData?.data?.items || []
+  const knowledgePoints: KnowledgePoint[] = knowledgeData?.data?.items || []
 
   // 获取知识图谱
   const { data: graphData, isLoading: graphLoading } = useQuery({
@@ -295,10 +295,10 @@ export default function KnowledgePage() {
       render: (concepts) => (
         <Space size={[0, 4]} wrap>
           {concepts?.slice(0, 3).map((concept: string) => (
-            <Tag key={concept} color="green" size="small">{concept}</Tag>
+            <Tag key={concept} color="green">{concept}</Tag>
           ))}
           {concepts && concepts.length > 3 && (
-            <Tag size="small">+{concepts.length - 3}</Tag>
+            <Tag>+{concepts.length - 3}</Tag>
           )}
         </Space>
       ),
@@ -345,7 +345,7 @@ export default function KnowledgePage() {
 
   const knowledgeStats = {
     total: knowledgePoints.length,
-    categories: [...new Set(knowledgePoints.map(kp => kp.category))].length,
+    categories: Array.from(new Set(knowledgePoints.map(kp => kp.category))).length,
     concepts: knowledgePoints.reduce((acc, kp) => acc + (kp.concepts?.length || 0), 0),
     highImportance: knowledgePoints.filter(kp => kp.importance >= 4).length,
   }

@@ -54,7 +54,7 @@ export default function HomePage() {
       key: 'dashboard',
       icon: <DashboardOutlined />,
       label: '仪表盘',
-      onClick: () => router.push('/dashboard'),
+      onClick: () => router.push('/'),
     },
     {
       key: 'courses',

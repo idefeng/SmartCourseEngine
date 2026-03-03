@@ -34,11 +34,19 @@ export default function VideoUploadPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('upload');
   const [currentStep, setCurrentStep] = useState(0);
+  const [analysisCompleted, setAnalysisCompleted] = useState(false);
 
   // 上传完成回调
   const handleUploadComplete = (task: any) => {
     console.log('上传完成:', task);
+    setAnalysisCompleted(false);
     setCurrentStep(1); // 进入分析步骤
+    setActiveTab('progress');
+  };
+
+  const handleAnalysisCompleted = () => {
+    setCurrentStep(2);
+    setAnalysisCompleted(true);
     setActiveTab('progress');
   };
 
@@ -140,12 +148,33 @@ export default function VideoUploadPage() {
                       ),
                       children: (
                         <div style={{ padding: '24px 0' }}>
-                          <ProgressDisplay showDetails={true} />
+                          <ProgressDisplay
+                            showDetails={true}
+                            onAnalysisCompleted={handleAnalysisCompleted}
+                          />
                         </div>
                       ),
                     },
                   ]}
                 />
+                {analysisCompleted && (
+                  <Alert
+                    message="分析已完成"
+                    description={
+                      <Space>
+                        <Button onClick={() => router.push('/videos')}>
+                          返回视频列表
+                        </Button>
+                        <Button type="primary" onClick={() => router.push('/knowledge')}>
+                          查看知识库
+                        </Button>
+                      </Space>
+                    }
+                    type="success"
+                    showIcon
+                    style={{ marginTop: 16 }}
+                  />
+                )}
               </Card>
             </Col>
 

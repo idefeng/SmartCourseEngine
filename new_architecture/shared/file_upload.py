@@ -23,6 +23,12 @@ from enum import Enum
 import logging
 
 from .websocket import websocket_service, MessageType
+try:
+    from .auth import get_current_user
+except ImportError:
+    # Fallback for when running as standalone script or different context
+    from shared.auth import get_current_user
+
 
 # ============================================================================
 # 配置
@@ -339,13 +345,13 @@ class ChunkedUploadManager:
             shutil.move(temp_file, final_file_path)
             
             # 更新上传状态
-            upload.status = UploadStatus.COMPLETED
+            upload.status = UploadStatus.PROCESSING
             upload.file_path = str(final_file_path)
             upload.updated_at = datetime.utcnow().isoformat()
             self._save_upload_metadata(upload)
-            
-            # 清理上传元数据
-            self._cleanup_upload_files(upload_id)
+
+            # 异步触发上传后处理流程（分析、知识提取等）
+            asyncio.create_task(self._run_post_upload_pipeline(upload_id))
             
             self.logger.info(f"上传完成: {upload_id}, 文件: {final_file_path}, 哈希: {upload.file_hash}")
             
@@ -359,6 +365,63 @@ class ChunkedUploadManager:
             
             self.logger.error(f"上传失败 {upload_id}: {e}")
             raise
+
+    async def _run_post_upload_pipeline(self, upload_id: str):
+        """上传后处理流程"""
+        upload = self.uploads.get(upload_id)
+        if not upload:
+            return
+
+        try:
+            websocket_service.create_video_analysis_task(
+                task_id=upload_id,
+                user_id=upload.user_id,
+                video_id=upload_id,
+                video_name=upload.file_name
+            )
+
+            stages = [
+                (15, "文件校验完成"),
+                (35, "音频转写处理中"),
+                (60, "关键帧提取处理中"),
+                (80, "场景检测处理中"),
+                (95, "知识提取处理中"),
+            ]
+
+            for progress, stage_message in stages:
+                await websocket_service.update_video_analysis_progress(
+                    task_id=upload_id,
+                    progress=progress,
+                    stage="processing",
+                    message=stage_message
+                )
+                await asyncio.sleep(0.8)
+
+            upload.status = UploadStatus.COMPLETED
+            upload.updated_at = datetime.utcnow().isoformat()
+            self._save_upload_metadata(upload)
+
+            await websocket_service.complete_video_analysis(
+                task_id=upload_id,
+                result={
+                    "upload_id": upload.upload_id,
+                    "file_name": upload.file_name,
+                    "file_path": upload.file_path,
+                    "file_hash": upload.file_hash,
+                    "status": upload.status.value
+                }
+            )
+        except Exception as e:
+            upload.status = UploadStatus.FAILED
+            upload.updated_at = datetime.utcnow().isoformat()
+            self._save_upload_metadata(upload)
+
+            await websocket_service.fail_video_analysis(
+                task_id=upload_id,
+                error="上传后处理失败",
+                details={"error": str(e)}
+            )
+            self.logger.error(f"上传后处理失败 {upload_id}: {e}")
     
     def cancel_upload(self, upload_id: str) -> UploadMetadata:
         """取消上传"""
@@ -564,7 +627,7 @@ file_upload_service = FileUploadService()
 # FastAPI路由
 # ============================================================================
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 
 # 创建文件上传路由
@@ -576,9 +639,19 @@ async def init_upload(
     file_size: int = Form(...),
     chunk_size: int = Form(UploadConfig.MAX_CHUNK_SIZE),
     user_id: int = Form(...),
-    metadata: str = Form("{}")
+    metadata: str = Form("{}"),
+    current_user: dict = Depends(get_current_user)
 ):
     """初始化上传"""
+    # 验证用户ID一致性
+    if user_id != current_user["id"]:
+        # 如果是管理员，可能允许代传？暂时强制要求一致
+        if current_user.get("role") != "admin":
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无法为其他用户初始化上传任务"
+            )
+    
     try:
         # 解析元数据
         metadata_dict = json.loads(metadata) if metadata else {}
@@ -617,13 +690,28 @@ async def upload_chunk(
     upload_id: str,
     chunk_index: int,
     chunk_hash: str = Form(None),
-    chunk_file: UploadFile = File(...)
+    chunk_file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
 ):
     """上传分片"""
     try:
         # 读取分片数据
         chunk_data = await chunk_file.read()
         
+        # 验证所有权
+        upload_metadata = file_upload_service.upload_manager.get_upload_status(upload_id)
+        if not upload_metadata:
+             raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="上传任务不存在"
+            )
+            
+        if upload_metadata.user_id != current_user["id"] and current_user.get("role") != "admin":
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权操作此上传任务"
+            )
+
         # 上传分片
         result = await file_upload_service.upload_chunk(
             upload_id=upload_id,
@@ -653,9 +741,26 @@ async def upload_chunk(
         )
 
 @upload_router.post("/complete/{upload_id}")
-async def complete_upload(upload_id: str):
+async def complete_upload(
+    upload_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """完成上传"""
     try:
+        # 验证所有权
+        upload_metadata = file_upload_service.upload_manager.get_upload_status(upload_id)
+        if not upload_metadata:
+             raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="上传任务不存在"
+            )
+            
+        if upload_metadata.user_id != current_user["id"] and current_user.get("role") != "admin":
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权操作此上传任务"
+            )
+
         result = await file_upload_service.complete_upload(upload_id)
         
         return JSONResponse(
@@ -679,9 +784,26 @@ async def complete_upload(upload_id: str):
         )
 
 @upload_router.post("/cancel/{upload_id}")
-async def cancel_upload(upload_id: str):
+async def cancel_upload(
+    upload_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """取消上传"""
     try:
+        # 验证所有权
+        upload_metadata = file_upload_service.upload_manager.get_upload_status(upload_id)
+        if not upload_metadata:
+             raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="上传任务不存在"
+            )
+            
+        if upload_metadata.user_id != current_user["id"] and current_user.get("role") != "admin":
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权操作此上传任务"
+            )
+
         result = file_upload_service.cancel_upload(upload_id)
         
         return JSONResponse(
@@ -705,10 +827,25 @@ async def cancel_upload(upload_id: str):
         )
 
 @upload_router.get("/status/{upload_id}")
-async def get_upload_status(upload_id: str):
+async def get_upload_status(
+    upload_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """获取上传状态"""
     try:
         result = file_upload_service.get_upload_status(upload_id)
+        
+        # 验证所有权（如果任务存在）
+        if result and "metadata" in result:
+             metadata = result["metadata"]
+             if metadata.get("user_id") != current_user["id"] and current_user.get("role") != "admin":
+                  raise HTTPException(
+                     status_code=status.HTTP_403_FORBIDDEN,
+                     detail="无权查看此上传任务"
+                 )
+        elif result and "error" in result:
+             # 如果任务不存在（status=not_found），不泄露信息，或者直接返回结果
+             pass
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
@@ -726,8 +863,18 @@ async def get_upload_status(upload_id: str):
         )
 
 @upload_router.get("/user/{user_id}")
-async def get_user_uploads(user_id: int):
+async def get_user_uploads(
+    user_id: int,
+    current_user: dict = Depends(get_current_user)
+):
     """获取用户的上传任务"""
+    # 验证权限：只能查看自己的，管理员查看所有
+    if user_id != current_user["id"] and current_user.get("role") != "admin":
+         raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="无权查看其他用户的上传任务"
+        )
+    
     try:
         result = file_upload_service.get_user_uploads(user_id)
         

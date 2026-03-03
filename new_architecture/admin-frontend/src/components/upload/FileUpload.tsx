@@ -44,8 +44,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   multiple = false,
   maxSize = 10240, // 10GB in MB
 }) => {
-  const { user } = useAuth();
-  const [messageApi, contextHolder] = message.useMessage();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const {
     uploadFile,
     getTasks,
@@ -59,6 +58,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [tasks, setTasks] = useState<UploadTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<UploadTask | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 加载任务列表
   useEffect(() => {
@@ -73,7 +73,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const handleCompleted = (event: any) => {
       const { task } = event;
       updateTask(task);
-      messageApi.success(`文件上传完成: ${task.file_name}`);
+      message.success(`文件上传完成: ${task.file_name}`);
       if (onUploadComplete) {
         onUploadComplete(task);
       }
@@ -82,7 +82,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const handleFailed = (event: any) => {
       const { task, data } = event;
       updateTask(task);
-      messageApi.error(`文件上传失败: ${task.file_name}`);
+      message.error(`文件上传失败: ${task.file_name}`);
       if (onUploadError && data?.error) {
         onUploadError(data.error);
       }
@@ -91,7 +91,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const handleCancelled = (event: any) => {
       const { task } = event;
       removeTask(task.upload_id);
-      messageApi.info(`上传已取消: ${task.file_name}`);
+      message.info(`上传已取消: ${task.file_name}`);
     };
 
     on(UploadEventType.PROGRESS, handleProgress);
@@ -132,46 +132,50 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setTasks(prev => prev.filter(task => task.upload_id !== uploadId));
   };
 
-  // 上传前检查钩子
-  const beforeUpload = (file: File) => {
-    // 1. 验证登录状态
-    if (!user?.id) {
-      messageApi.error('请先登录后再上传文件');
-      return AntUpload.LIST_IGNORE;
+  // 处理文件选择
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    if (isLoading) {
+      message.warning('正在校验登录状态，请稍后重试');
+      return;
     }
 
-    // 2. 验证文件大小
-    if (file.size > maxSize * 1024 * 1024) {
-      messageApi.error(`文件 ${file.name} 超过大小限制 (${maxSize}MB)`);
-      return AntUpload.LIST_IGNORE;
+    if (!isAuthenticated || !user?.id) {
+      message.error('请先登录后再上传文件');
+      return;
     }
-    
-    // 3. 开始上传
-    handleUpload(file);
-    
-    // 4. 返回false阻止Ant Design默认上传行为
-    return false;
-  };
-
-  // 处理文件上传
-  const handleUpload = async (file: File) => {
-    if (!user?.id) return;
 
     setUploading(true);
-    try {
-      // 开始上传
-      const task = await uploadFile(file, user.id, {
-        description: `上传于 ${new Date().toLocaleString()}`,
-      });
 
-      updateTask(task);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // 验证文件大小
+        if (file.size > maxSize * 1024 * 1024) {
+          message.error(`文件 ${file.name} 超过大小限制 (${maxSize}MB)`);
+          continue;
+        }
+
+        // 开始上传
+        const task = await uploadFile(file, user.id, {
+          description: `上传于 ${new Date().toLocaleString()}`,
+        });
+
+        updateTask(task);
+      }
     } catch (error: any) {
-      messageApi.error(`上传失败: ${error.message}`);
+      message.error(`上传失败: ${error.message}`);
       if (onUploadError) {
         onUploadError(error);
       }
     } finally {
       setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -187,7 +191,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           await cancelUpload(task.upload_id);
           removeTask(task.upload_id);
         } catch (error: any) {
-          messageApi.error(`取消上传失败: ${error.message}`);
+          message.error(`取消上传失败: ${error.message}`);
         }
       },
     });
@@ -245,7 +249,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div className="file-upload-container">
-      {contextHolder}
       <Card
         title={
           <Space>
@@ -255,21 +258,23 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }
         extra={
           <Space>
-            <AntUpload
+            <input
+              ref={fileInputRef}
+              type="file"
               accept={accept}
               multiple={multiple}
-              beforeUpload={beforeUpload}
-              showUploadList={false}
-              fileList={[]}
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              loading={uploading}
+              disabled={isLoading || !isAuthenticated}
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                loading={uploading}
-              >
-                选择文件
-              </Button>
-            </AntUpload>
+              选择文件
+            </Button>
           </Space>
         }
       >

@@ -88,7 +88,7 @@ export default function VideosPage() {
     queryFn: () => api.videos.getVideos({ search: searchText }),
   })
 
-  const videos = videosData?.data?.items || []
+  const videos: Video[] = videosData?.data?.items || []
 
   // 上传视频
   const uploadMutation = useMutation({
@@ -263,11 +263,11 @@ export default function VideosPage() {
             {record.description?.substring(0, 80)}...
           </div>
           <Space size={[4, 0]} wrap>
-            <Tag icon={<ClockCircleOutlined />} size="small">
+            <Tag icon={<ClockCircleOutlined />}>
               {formatDuration(record.duration || 0)}
             </Tag>
-            <Tag size="small">{record.format || 'mp4'}</Tag>
-            <Tag size="small">{formatFileSize(record.file_size || 0)}</Tag>
+            <Tag>{record.format || 'mp4'}</Tag>
+            <Tag>{formatFileSize(record.file_size || 0)}</Tag>
           </Space>
         </div>
       ),

@@ -138,12 +138,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       messageApi.success('登录成功')
       
-      // 根据角色跳转
-      if (user.role === 'admin') {
-        router.push('/dashboard') 
-      } else {
-        router.push('/dashboard')
-      }
+      router.push('/')
       
     } catch (error: any) {
       setState(prev => ({ ...prev, isLoading: false }))
@@ -174,7 +169,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       })
       
       messageApi.success('注册成功')
-      router.push('/dashboard')
+      router.push('/')
       
     } catch (error: any) {
       setState(prev => ({ ...prev, isLoading: false }))
@@ -186,8 +181,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // 登出
   const logout = () => {
-    // 调用API logout只是为了清理本地，也可以调用后端注销
     api.auth.logout() 
+    localStorage.removeItem(STORAGE_KEYS.TOKEN)
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
+    localStorage.removeItem(STORAGE_KEYS.USER)
+    localStorage.removeItem(STORAGE_KEYS.REMEMBER)
     setState({
       user: null,
       token: null,

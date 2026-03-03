@@ -23,7 +23,26 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 # 添加共享模块路径
+# 将 api-gateway 的父目录 (new_architecture) 添加到 sys.path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+# 将 shared 目录添加到 sys.path (为了直接导入 shared 内部模块)
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
+# 将 api-gateway 目录添加到 sys.path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# 尝试导入认证路由
+try:
+    # 尝试直接导入
+    try:
+        from auth_routes import router as auth_router
+        AUTH_AVAILABLE = True
+    except ImportError:
+        # 尝试带包名导入
+        from api_gateway.auth_routes import router as auth_router
+        AUTH_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  认证模块导入失败: {e}")
+    AUTH_AVAILABLE = False
 
 try:
     from shared.api_response import (
@@ -84,8 +103,14 @@ except ImportError:
 class Database:
     """数据库连接管理"""
     
-    def __init__(self, db_path: str = "../data/smartcourse.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # 使用相对于 new_architecture 根目录的路径
+            root_path = Path(__file__).parent.parent
+            self.db_path = root_path / "data" / "smartcourse.db"
+        else:
+            self.db_path = Path(db_path)
+            
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
     
     def get_connection(self):
@@ -303,9 +328,13 @@ async def lifespan(app: FastAPI):
     print("🚀 启动 SmartCourseEngine 统一API网关")
     
     # 检查数据库
-    db_path = Path("../data/smartcourse.db")
+    root_path = Path(__file__).parent.parent
+    db_path = root_path / "data" / "smartcourse.db"
+    
     if not db_path.exists():
-        print("⚠️  数据库文件不存在，请先运行数据库初始化")
+        print(f"⚠️  数据库文件不存在，请先运行数据库初始化: {db_path}")
+    else:
+        print(f"✅ 数据库文件已就绪: {db_path}")
     
     yield
     
@@ -328,6 +357,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 注册认证路由
+if AUTH_AVAILABLE:
+    # auth_routes 中已经定义了 prefix="/api/v1/auth"
+    app.include_router(auth_router)
+    print("✅ 认证路由已注册: /api/v1/auth")
+else:
+    print("⚠️  认证路由未注册，相关功能不可用")
 
 # ============================================================================
 # 依赖注入
@@ -435,7 +472,8 @@ async def root():
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    db_path = Path("../data/smartcourse.db")
+    root_path = Path(__file__).parent.parent
+    db_path = root_path / "data" / "smartcourse.db"
     
     return success_response(
         data={

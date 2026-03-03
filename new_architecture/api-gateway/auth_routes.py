@@ -10,7 +10,7 @@
 日期: 2026-03-01
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 
@@ -113,7 +113,7 @@ async def login(login_data: UserLogin):
 
 
 @router.post("/refresh", response_model=dict)
-async def refresh_token(refresh_token: str):
+async def refresh_token(refresh_token: str = Body(..., embed=True)):
     """刷新访问令牌"""
     try:
         # 验证刷新令牌
@@ -158,7 +158,7 @@ async def refresh_token(refresh_token: str):
 
 
 @router.post("/forgot-password")
-async def forgot_password(email: str):
+async def forgot_password(email: str = Body(..., embed=True)):
     """忘记密码（发送重置邮件）"""
     try:
         # 检查用户是否存在
@@ -247,8 +247,8 @@ async def update_current_user_info(
 
 @router.post("/change-password")
 async def change_password(
-    old_password: str,
-    new_password: str,
+    old_password: str = Body(...),
+    new_password: str = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
     """修改密码"""

@@ -426,11 +426,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 title={
                   <Space>
                     <Text strong>{notification.title}</Text>
-                    <Tag color={getNotificationTagColor(notification.type)} size="small">
+                    <Tag color={getNotificationTagColor(notification.type)}>
                       {notification.type}
                     </Tag>
                     {!notification.read && (
-                      <Tag color="blue" size="small">
+                      <Tag color="blue">
                         未读
                       </Tag>
                     )}

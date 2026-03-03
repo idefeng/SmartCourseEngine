@@ -15,7 +15,6 @@ import {
   Col,
 } from 'antd'
 import { 
-  UserOutlined, 
   LockOutlined, 
   MailOutlined,
   EyeInvisibleOutlined,
@@ -23,43 +22,27 @@ import {
   GoogleOutlined,
   GithubOutlined,
 } from '@ant-design/icons'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { api } from '@/services/api'
+import { useAuth } from '@/contexts/auth-context'
 
 const { Title, Text, Paragraph } = Typography
 
 export default function LoginPage() {
   const [form] = Form.useForm()
-  const router = useRouter()
+  const { login } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loginType, setLoginType] = useState<'email' | 'username'>('email')
 
   const handleLogin = async (values: any) => {
     setLoading(true)
     setError(null)
     
     try {
-      // 这里应该调用实际的登录API
-      // 为了演示，我们使用模拟登录
-      if (values.email === 'admin@smartcourse.com' && values.password === 'Admin@123') {
-        // 模拟成功登录
-        localStorage.setItem('token', 'mock-jwt-token')
-        localStorage.setItem('user', JSON.stringify({
-          id: 1,
-          email: 'admin@smartcourse.com',
-          username: 'admin',
-          full_name: '系统管理员',
-          role: 'admin',
-          avatar_url: null
-        }))
-        
-        // 跳转到仪表盘
-        router.push('/')
-      } else {
-        setError('邮箱或密码不正确')
-      }
+      await login({
+        email: values.email,
+        password: values.password,
+        remember: values.remember
+      })
     } catch (err: any) {
       setError(err.message || '登录失败，请稍后重试')
     } finally {

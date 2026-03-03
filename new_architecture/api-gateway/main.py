@@ -16,6 +16,9 @@ from pathlib import Path
 from datetime import datetime
 
 # 添加共享模块路径
+# 将 api-gateway 的父目录 (new_architecture) 添加到 sys.path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+# 将 shared 目录添加到 sys.path (为了直接导入 shared 内部模块)
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query, Body
@@ -254,92 +257,6 @@ async def list_courses(
         return BaseResponse.error(
             message="获取课程列表失败",
             error_code="COURSE_LIST_ERROR"
-        )
-
-@app.get("/api/v1/videos", tags=["视频"])
-@handle_exceptions
-async def list_videos(
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, description="每页大小"),
-    search: Optional[str] = Query(None, description="搜索关键词"),
-    authenticated: bool = Depends(verify_api_key)
-):
-    """列出视频"""
-    try:
-        from services.video_service import video_service
-        
-        result = video_service.list_videos(
-            page=page,
-            page_size=page_size,
-            search=search
-        )
-        
-        return BaseResponse.success(
-            message="获取视频列表成功",
-            data=result
-        )
-    except Exception as e:
-        logger.error(f"列出视频失败: {e}")
-        return BaseResponse.error(
-            message="获取视频列表失败",
-            error_code="VIDEO_LIST_ERROR"
-        )
-
-@app.get("/api/v1/videos/{video_id}", tags=["视频"])
-@handle_exceptions
-async def get_video(
-    video_id: int,
-    authenticated: bool = Depends(verify_api_key)
-):
-    """获取视频详情"""
-    try:
-        from services.video_service import video_service
-        
-        result = video_service.get_video(video_id)
-        
-        if not result:
-            return BaseResponse.error(
-                message="视频不存在",
-                error_code="VIDEO_NOT_FOUND"
-            )
-            
-        return BaseResponse.success(
-            message="获取视频详情成功",
-            data=result
-        )
-    except Exception as e:
-        logger.error(f"获取视频详情失败: {e}")
-        return BaseResponse.error(
-            message="获取视频详情失败",
-            error_code="VIDEO_GET_ERROR"
-        )
-
-@app.delete("/api/v1/videos/{video_id}", tags=["视频"])
-@handle_exceptions
-async def delete_video(
-    video_id: int,
-    authenticated: bool = Depends(verify_api_key)
-):
-    """删除视频"""
-    try:
-        from services.video_service import video_service
-        
-        success = video_service.delete_video(video_id)
-        
-        if not success:
-            return BaseResponse.error(
-                message="视频不存在或删除失败",
-                error_code="VIDEO_DELETE_ERROR"
-            )
-            
-        return BaseResponse.success(
-            message="删除视频成功"
-        )
-    except Exception as e:
-        logger.error(f"删除视频失败: {e}")
-        return BaseResponse.error(
-            message="删除视频失败",
-            error_code="VIDEO_DELETE_ERROR"
         )
 
 @app.post("/api/v1/courses", tags=["课程"])

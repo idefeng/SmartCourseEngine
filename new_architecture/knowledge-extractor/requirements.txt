@@ -25,7 +25,6 @@ langchain-community==0.0.10
 spacy==3.7.2
 nltk==3.8.1
 jieba==0.42.1
-pkuseg==0.0.25
 
 # 知识图谱
 rdflib==7.0.0

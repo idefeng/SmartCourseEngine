@@ -24,6 +24,10 @@ import logging
 
 from .websocket import websocket_service, MessageType
 try:
+    from .task_queue import publish_video_analysis_task
+except ImportError:
+    from shared.task_queue import publish_video_analysis_task
+try:
     from .auth import get_current_user
 except ImportError:
     # Fallback for when running as standalone script or different context
@@ -346,14 +350,26 @@ class ChunkedUploadManager:
             
             # 更新上传状态
             upload.status = UploadStatus.PROCESSING
-            upload.file_path = str(final_file_path)
+            upload.file_path = str(final_file_path.resolve())
             upload.updated_at = datetime.utcnow().isoformat()
             self._save_upload_metadata(upload)
 
-            # 异步触发上传后处理流程（分析、知识提取等）
-            asyncio.create_task(self._run_post_upload_pipeline(upload_id))
+            task_info = await publish_video_analysis_task(
+                {
+                    "task_id": upload_id,
+                    "upload_id": upload_id,
+                    "user_id": upload.user_id,
+                    "file_name": upload.file_name,
+                    "file_path": upload.file_path,
+                    "file_hash": upload.file_hash,
+                    "metadata": upload.metadata or {},
+                }
+            )
+            upload.metadata = upload.metadata or {}
+            upload.metadata["queue_task"] = task_info
+            self._save_upload_metadata(upload)
             
-            self.logger.info(f"上传完成: {upload_id}, 文件: {final_file_path}, 哈希: {upload.file_hash}")
+            self.logger.info(f"上传完成并入队: {upload_id}, 队列: {task_info['queue']}")
             
             return upload
             
@@ -443,6 +459,10 @@ class ChunkedUploadManager:
     
     def get_upload_status(self, upload_id: str) -> Optional[UploadMetadata]:
         """获取上传状态"""
+        loaded_upload = self._load_upload_metadata(upload_id)
+        if loaded_upload:
+            self.uploads[upload_id] = loaded_upload
+            return loaded_upload
         return self.uploads.get(upload_id)
     
     def get_user_uploads(self, user_id: int) -> List[UploadMetadata]:

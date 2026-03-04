@@ -15,19 +15,14 @@ scrape_configs:
       - targets: ['api-gateway:8000']
     metrics_path: '/metrics'
 
-  - job_name: 'course-generator'
-    static_configs:
-      - targets: ['course-generator:8001']
-    metrics_path: '/metrics'
-
   - job_name: 'video-analyzer'
     static_configs:
       - targets: ['video-analyzer:8002']
     metrics_path: '/metrics'
 
-  - job_name: 'knowledge-base'
+  - job_name: 'knowledge-extractor'
     static_configs:
-      - targets: ['knowledge-base:8003']
+      - targets: ['knowledge-extractor:8003']
     metrics_path: '/metrics'
 
   - job_name: 'search-engine'
@@ -35,14 +30,7 @@ scrape_configs:
       - targets: ['search-engine:8004']
     metrics_path: '/metrics'
 
-  - job_name: 'postgres'
+  - job_name: 'video-analysis-worker'
     static_configs:
-      - targets: ['postgres-exporter:9187']
-
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis-exporter:9121']
-
-  - job_name: 'neo4j'
-    static_configs:
-      - targets: ['neo4j-exporter:2004']
+      - targets: ['video-analysis-worker:9108']
+    metrics_path: '/metrics'

@@ -11,7 +11,6 @@ sqlalchemy==2.0.23
 
 # AI模型
 openai==1.12.0
-whisper-openai==20231117
 torch==2.1.0
 torchvision==0.16.0
 transformers==4.36.2

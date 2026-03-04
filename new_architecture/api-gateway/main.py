@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 # 添加共享模块路径
 # 将 api-gateway 的父目录 (new_architecture) 添加到 sys.path
@@ -61,6 +62,22 @@ logger = setup_logger(
     format_str=service_config.log_format
 )
 
+try:
+    from auth_routes import router as auth_router
+    AUTH_ENABLED = True
+except ImportError as e:
+    auth_router = None
+    AUTH_ENABLED = False
+    logger.warning(f"认证路由导入失败: {e}")
+
+try:
+    from shared.websocket import router as websocket_router
+    WEBSOCKET_ENABLED = True
+except ImportError as e:
+    websocket_router = None
+    WEBSOCKET_ENABLED = False
+    logger.warning(f"WebSocket路由导入失败: {e}")
+
 # ============================================================================
 # FastAPI应用
 # ============================================================================
@@ -73,6 +90,14 @@ app = FastAPI(
     redoc_url=None,
     openapi_url="/openapi.json"
 )
+
+if AUTH_ENABLED and auth_router:
+    app.include_router(auth_router)
+    logger.info("认证路由已注册: /api/v1/auth")
+
+if WEBSOCKET_ENABLED and websocket_router:
+    app.include_router(websocket_router)
+    logger.info("WebSocket路由已注册: /ws")
 
 # ============================================================================
 # 中间件

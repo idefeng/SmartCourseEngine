@@ -121,7 +121,13 @@ class ServiceConfig(BaseSettings):
     
     # CORS配置
     cors_origins: list = Field(
-        default=["http://localhost:3000", "http://localhost:8501"],
+        default=[
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://localhost:8501"
+        ],
         description="CORS允许的源"
     )
     

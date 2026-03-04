@@ -18,14 +18,14 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制共享模块
-COPY ../shared /app/shared
-
-# 复制服务代码
-COPY . /app
+# 复制共享模块与服务代码
+COPY shared/requirements.txt /app/shared-requirements.txt
+COPY shared /app/shared
+COPY api-gateway /app
 
 # 安装Python依赖
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r shared-requirements.txt && \
     pip install --no-cache-dir -r requirements.txt
 
 # 创建非root用户

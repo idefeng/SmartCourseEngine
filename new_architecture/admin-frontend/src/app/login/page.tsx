@@ -77,7 +77,7 @@ export default function LoginPage() {
           borderRadius: 12,
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
         }}
-        bodyStyle={{ padding: 40 }}
+        styles={{ body: { padding: 40 } }}
       >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Title level={2} style={{ marginBottom: 8, color: '#1890ff' }}>

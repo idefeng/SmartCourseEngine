@@ -332,7 +332,7 @@ export default function HomePage() {
 
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Card title="视频分析" bordered={false}>
+                <Card title="视频分析" variant="borderless">
                   <ul style={{ paddingLeft: 20 }}>
                     <li>支持多种视频格式上传</li>
                     <li>自动语音识别（支持中文）</li>
@@ -342,7 +342,7 @@ export default function HomePage() {
                 </Card>
               </Col>
               <Col xs={24} md={12}>
-                <Card title="知识管理" bordered={false}>
+                <Card title="知识管理" variant="borderless">
                   <ul style={{ paddingLeft: 20 }}>
                     <li>结构化知识点提取</li>
                     <li>知识图谱可视化</li>
@@ -352,7 +352,7 @@ export default function HomePage() {
                 </Card>
               </Col>
               <Col xs={24} md={12}>
-                <Card title="学习管理" bordered={false}>
+                <Card title="学习管理" variant="borderless">
                   <ul style={{ paddingLeft: 20 }}>
                     <li>个性化学习路径</li>
                     <li>学习进度跟踪</li>
@@ -362,7 +362,7 @@ export default function HomePage() {
                 </Card>
               </Col>
               <Col xs={24} md={12}>
-                <Card title="系统管理" bordered={false}>
+                <Card title="系统管理" variant="borderless">
                   <ul style={{ paddingLeft: 20 }}>
                     <li>多用户权限管理</li>
                     <li>数据备份和恢复</li>

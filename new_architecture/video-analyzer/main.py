@@ -414,38 +414,62 @@ async def analyze_video(
         if video_analyzer.whisper_model is None:
             await video_analyzer.load_models()
         
-        video_path_obj = Path(video_path)
-        if not video_path_obj.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="视频文件不存在"
-            )
+        # 路径归一化处理：处理 Docker 卷映射路径差异
+        # 容器内 uploads 挂载在 /app/uploads
+        # 传入的 video_path 可能是 /app/uploads/xxx 或其他绝对路径
+        # 我们只取文件名，并在 /app/uploads 下查找
         
-        logger.info(f"开始分析视频: {video_path}")
+        target_dir = Path("/app/uploads")
+        original_path_obj = Path(video_path)
         
-        # 并行执行分析任务
-        tasks = [
-            video_analyzer.transcribe_video(video_path_obj),
-            video_analyzer.extract_keyframes(video_path_obj),
-            video_analyzer.detect_scenes(video_path_obj)
-        ]
+        # 优先尝试原始路径
+        if original_path_obj.exists():
+            video_path_obj = original_path_obj
+        else:
+            # 尝试在 /app/uploads 下查找同名文件
+            fallback_path = target_dir / original_path_obj.name
+            if fallback_path.exists():
+                logger.info(f"原始路径不存在，使用同名文件路径: {fallback_path}")
+                video_path_obj = fallback_path
+            else:
+                # 再次尝试解码 URL 编码的文件名（应对特殊字符）
+                import urllib.parse
+                decoded_name = urllib.parse.unquote(original_path_obj.name)
+                decoded_path = target_dir / decoded_name
+                if decoded_path.exists():
+                    logger.info(f"使用解码后的文件名路径: {decoded_path}")
+                    video_path_obj = decoded_path
+                else:
+                    logger.error(f"视频文件不存在: 原始路径={video_path}, 尝试路径={fallback_path}, 解码路径={decoded_path}")
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"视频文件不存在: {original_path_obj.name}"
+                    )
         
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # 检查任务结果
-        transcript_result, keyframes_result, scenes_result = results
-        
+        logger.info(f"开始分析视频: {video_path_obj}")
+
+        transcript_result = await video_analyzer.transcribe_video(video_path_obj)
         if isinstance(transcript_result, Exception):
             logger.error(f"转录失败: {transcript_result}")
             transcript_result = {"text": "", "segments": [], "error": str(transcript_result)}
-        
-        if isinstance(keyframes_result, Exception):
-            logger.error(f"关键帧提取失败: {keyframes_result}")
-            keyframes_result = []
-        
-        if isinstance(scenes_result, Exception):
-            logger.error(f"场景检测失败: {scenes_result}")
-            scenes_result = []
+
+        enable_keyframes = os.getenv("ENABLE_KEYFRAMES", "false").lower() == "true"
+        enable_scenes = os.getenv("ENABLE_SCENES", "false").lower() == "true"
+
+        keyframes_result = []
+        scenes_result = []
+
+        if enable_keyframes:
+            keyframes_result = await video_analyzer.extract_keyframes(video_path_obj)
+            if isinstance(keyframes_result, Exception):
+                logger.error(f"关键帧提取失败: {keyframes_result}")
+                keyframes_result = []
+
+        if enable_scenes:
+            scenes_result = await video_analyzer.detect_scenes(video_path_obj)
+            if isinstance(scenes_result, Exception):
+                logger.error(f"场景检测失败: {scenes_result}")
+                scenes_result = []
         
         # 构建分析结果
         analysis_result = {

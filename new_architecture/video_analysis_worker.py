@@ -44,24 +44,49 @@ class VideoAnalysisWorker:
         params: Dict[str, Any] = {"video_path": file_path}
         if course_id is not None:
             params["course_id"] = course_id
-        async with httpx.AsyncClient(timeout=1800.0) as client:
+        
+        # 延长超时时间到3600秒（1小时），因为Whisper转录大文件可能非常耗时
+        timeout = httpx.Timeout(3600.0, connect=60.0)
+        
+        async with httpx.AsyncClient(timeout=timeout) as client:
             last_error: Optional[Exception] = None
-            for attempt in range(1, self.max_retries + 1):
+            # 增加重试次数
+            max_retries = 5
+            
+            for attempt in range(1, max_retries + 1):
                 try:
+                    self.logger.info(f"调用视频分析服务 (尝试 {attempt}/{max_retries}): {url}, 参数: {params}")
                     response = await client.post(url, params=params)
+                    
+                    # 404不重试，直接抛出
+                    if response.status_code == 404:
+                        self.logger.error(f"视频文件不存在 (404): {file_path}")
+                        response.raise_for_status()
+                        
+                    # 其他错误码重试
+                    if response.status_code in (400, 401, 403, 422, 500, 502, 503, 504):
+                        self.logger.warning(f"服务返回错误状态码: {response.status_code} - {response.text[:200]}")
+                        response.raise_for_status()
+                        
                     response.raise_for_status()
                     payload = response.json()
-                    break
-                except (httpx.HTTPError, json.JSONDecodeError) as e:
+                    return payload.get("data", payload)
+                    
+                except (httpx.HTTPError, json.JSONDecodeError, OSError) as e:
                     last_error = e
-                    self.logger.warning(f"调用视频分析服务失败({attempt}/{self.max_retries}): {e}")
-                    if attempt < self.max_retries:
-                        await asyncio.sleep(self.retry_delay * attempt)
-            else:
-                raise RuntimeError(f"调用视频分析服务失败: {last_error}")
-        if not payload.get("success", False):
-            raise RuntimeError(f"视频分析服务返回失败: {payload}")
-        return payload.get("data", payload)
+                    # 如果是404，不重试
+                    if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404:
+                        raise
+                        
+                    self.logger.warning(f"调用视频分析服务失败({attempt}/{max_retries}): {type(e).__name__} - {e}")
+                    
+                    # 指数退避策略
+                    if attempt < max_retries:
+                        sleep_time = self.retry_delay * (2 ** (attempt - 1))
+                        self.logger.info(f"等待 {sleep_time:.2f} 秒后重试...")
+                        await asyncio.sleep(sleep_time)
+            
+            raise RuntimeError(f"调用视频分析服务失败，已重试{max_retries}次: {last_error}")
 
     def _resolve_metadata_path(self, upload_id: str, file_path: Optional[str]) -> Path:
         if file_path:

@@ -157,6 +157,13 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - WHISPER_MODEL=base
       - WHISPER_DEVICE=cpu
+      - ENABLE_KEYFRAMES=false
+      - ENABLE_SCENES=false
+      - OMP_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+      - NUMEXPR_NUM_THREADS=1
+      - TOKENIZERS_PARALLELISM=false
     volumes:
       - video_data:/app/data
       - uploads_data:/app/uploads

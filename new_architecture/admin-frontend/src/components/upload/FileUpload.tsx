@@ -12,7 +12,7 @@ import {
   List,
   Tag,
   Modal,
-  message,
+  App,
 } from 'antd';
 import {
   UploadOutlined,
@@ -53,6 +53,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     on,
     off,
   } = useUpload();
+  const { message } = App.useApp();
 
   const [uploading, setUploading] = useState(false);
   const [tasks, setTasks] = useState<UploadTask[]>([]);

@@ -81,6 +81,10 @@ class UploadStatus(str, Enum):
     FAILED = "failed"
     CANCELLED = "cancelled"
 
+    # 兼容性处理：允许直接作为字符串使用
+    def __str__(self):
+        return self.value
+
 
 @dataclass
 class UploadMetadata:
@@ -483,9 +487,16 @@ class ChunkedUploadManager:
         metadata_file = self.temp_dir / f"{upload_id}.json"
         
         if metadata_file.exists():
-            with open(metadata_file, "r") as f:
-                data = json.load(f)
-                return UploadMetadata(**data)
+            try:
+                with open(metadata_file, "r") as f:
+                    data = json.load(f)
+                    # 确保status是Enum类型
+                    if "status" in data:
+                        data["status"] = UploadStatus(data["status"])
+                    return UploadMetadata(**data)
+            except Exception as e:
+                self.logger.error(f"加载上传元数据失败 {upload_id}: {e}")
+                return None
         
         return None
     
@@ -581,9 +592,14 @@ class FileUploadService:
         
         upload_metadata = await self.upload_manager.complete_upload(upload_id)
         
+        # 兼容处理status
+        status_str = str(upload_metadata.status)
+        if hasattr(upload_metadata.status, 'value'):
+             status_str = upload_metadata.status.value
+
         return {
             "upload_id": upload_id,
-            "status": upload_metadata.status.value,
+            "status": status_str,
             "file_path": upload_metadata.file_path,
             "file_hash": upload_metadata.file_hash,
             "metadata": upload_metadata.to_dict()
@@ -594,9 +610,14 @@ class FileUploadService:
         
         upload_metadata = self.upload_manager.cancel_upload(upload_id)
         
+        # 兼容处理status
+        status_str = str(upload_metadata.status)
+        if hasattr(upload_metadata.status, 'value'):
+             status_str = upload_metadata.status.value
+
         return {
             "upload_id": upload_id,
-            "status": upload_metadata.status.value,
+            "status": status_str,
             "metadata": upload_metadata.to_dict()
         }
     
@@ -612,9 +633,14 @@ class FileUploadService:
                 "error": "上传任务不存在"
             }
         
+        # 终极修复：不再访问 .value，直接强制转字符串，利用 str(Enum) 的特性
+        status_str = str(upload_metadata.status)
+        if hasattr(upload_metadata.status, 'value'):
+             status_str = upload_metadata.status.value
+
         return {
             "upload_id": upload_id,
-            "status": upload_metadata.status.value,
+            "status": status_str,
             "progress": int((len(upload_metadata.uploaded_chunks) / upload_metadata.total_chunks) * 100),
             "metadata": upload_metadata.to_dict()
         }

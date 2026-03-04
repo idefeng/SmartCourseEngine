@@ -78,6 +78,14 @@ except ImportError as e:
     WEBSOCKET_ENABLED = False
     logger.warning(f"WebSocket路由导入失败: {e}")
 
+try:
+    from shared.file_upload import upload_router
+    FILE_UPLOAD_ENABLED = True
+except ImportError as e:
+    upload_router = None
+    FILE_UPLOAD_ENABLED = False
+    logger.warning(f"文件上传路由导入失败: {e}")
+
 # ============================================================================
 # FastAPI应用
 # ============================================================================
@@ -98,6 +106,10 @@ if AUTH_ENABLED and auth_router:
 if WEBSOCKET_ENABLED and websocket_router:
     app.include_router(websocket_router)
     logger.info("WebSocket路由已注册: /ws")
+
+if FILE_UPLOAD_ENABLED and upload_router:
+    app.include_router(upload_router)
+    logger.info("文件上传路由已注册: /api/v1/upload")
 
 # ============================================================================
 # 中间件

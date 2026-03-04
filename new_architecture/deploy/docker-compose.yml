@@ -160,6 +160,12 @@ services:
     volumes:
       - video_data:/app/data
       - uploads_data:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     depends_on:
       postgres:
         condition: service_healthy
@@ -176,13 +182,16 @@ services:
       - UPLOAD_DIR=/app/uploads
       - WORKER_METRICS_PORT=9108
       - LOG_LEVEL=INFO
+      - ANALYZER_MAX_RETRIES=5
+      - ANALYZER_RETRY_DELAY=3
     volumes:
       - uploads_data:/app/uploads
+    restart: unless-stopped
     depends_on:
       rabbitmq:
         condition: service_healthy
       video-analyzer:
-        condition: service_started
+        condition: service_healthy
 
   knowledge-extractor:
     build:

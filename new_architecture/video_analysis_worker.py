@@ -36,6 +36,8 @@ class VideoAnalysisWorker:
         self.rabbitmq_url = get_rabbitmq_url()
         self.queue_name = get_video_analysis_queue_name()
         self.analyzer_url = os.getenv("VIDEO_ANALYZER_URL", "http://localhost:8002")
+        self.max_retries = int(os.getenv("ANALYZER_MAX_RETRIES", "3"))
+        self.retry_delay = float(os.getenv("ANALYZER_RETRY_DELAY", "2.0"))
 
     async def call_video_analyzer(self, file_path: str, course_id: Optional[int] = None) -> Dict[str, Any]:
         url = f"{self.analyzer_url.rstrip('/')}/api/v1/videos/analyze"
@@ -43,9 +45,20 @@ class VideoAnalysisWorker:
         if course_id is not None:
             params["course_id"] = course_id
         async with httpx.AsyncClient(timeout=1800.0) as client:
-            response = await client.post(url, params=params)
-            response.raise_for_status()
-            payload = response.json()
+            last_error: Optional[Exception] = None
+            for attempt in range(1, self.max_retries + 1):
+                try:
+                    response = await client.post(url, params=params)
+                    response.raise_for_status()
+                    payload = response.json()
+                    break
+                except (httpx.HTTPError, json.JSONDecodeError) as e:
+                    last_error = e
+                    self.logger.warning(f"调用视频分析服务失败({attempt}/{self.max_retries}): {e}")
+                    if attempt < self.max_retries:
+                        await asyncio.sleep(self.retry_delay * attempt)
+            else:
+                raise RuntimeError(f"调用视频分析服务失败: {last_error}")
         if not payload.get("success", False):
             raise RuntimeError(f"视频分析服务返回失败: {payload}")
         return payload.get("data", payload)
@@ -113,7 +126,6 @@ class VideoAnalysisWorker:
                 )
                 TASK_TOTAL.labels(status="failed").inc()
                 self.logger.error(f"视频分析任务失败 {upload_id}: {e}")
-                raise
             finally:
                 WORKER_IN_PROGRESS.dec()
 

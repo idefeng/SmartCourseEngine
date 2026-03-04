@@ -15,6 +15,8 @@ import hashlib
 import json
 import shutil
 import asyncio
+import re
+import unicodedata
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, BinaryIO
 from datetime import datetime
@@ -171,6 +173,18 @@ class FileUtils:
         """检查是否是视频文件"""
         ext = FileUtils.get_file_extension(file_name)
         return ext in UploadConfig.VIDEO_EXTENSIONS
+
+    @staticmethod
+    def normalize_file_name(file_name: str) -> str:
+        base = Path(file_name).name
+        stem = Path(base).stem
+        suffix = Path(base).suffix.lower()
+        normalized = unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode("ascii")
+        safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", normalized).strip("._")
+        if not safe_stem:
+            safe_stem = "file"
+        safe_suffix = re.sub(r"[^A-Za-z0-9.]+", "", suffix)
+        return f"{safe_stem}{safe_suffix}"
     
     @staticmethod
     def create_directory(path: Path):
@@ -346,7 +360,8 @@ class ChunkedUploadManager:
             upload.file_hash = FileUtils.calculate_file_hash(temp_file)
             
             # 生成最终文件名
-            final_file_name = f"{upload.file_hash[:8]}_{upload.file_name}"
+            normalized_file_name = FileUtils.normalize_file_name(upload.file_name)
+            final_file_name = f"{upload.file_hash[:8]}_{normalized_file_name}"
             final_file_path = self.upload_dir / final_file_name
             
             # 移动文件到最终位置

@@ -397,6 +397,71 @@ async def list_videos(
         }
     )
 
+@app.delete("/api/v1/videos/{video_id}", tags=["视频"])
+async def delete_video(
+    video_id: str = FastAPIPath(..., description="视频ID"),
+    authenticated: bool = Depends(verify_api_key)
+):
+    upload_root = Path("/app/uploads").resolve()
+    metadata_dir = upload_root / "temp"
+    chunk_dir = upload_root / "chunks"
+    metadata_file = metadata_dir / f"{video_id}.json"
+
+    if not metadata_file.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="视频不存在"
+        )
+
+    payload: Dict[str, Any] = {}
+    try:
+        payload = json.loads(metadata_file.read_text(encoding="utf-8"))
+    except Exception:
+        payload = {}
+
+    deleted_files = 0
+
+    file_candidates: List[Path] = []
+    file_path_value = payload.get("file_path")
+    if isinstance(file_path_value, str) and file_path_value.strip():
+        file_candidates.append(Path(file_path_value.strip()))
+
+    file_name = payload.get("file_name")
+    if isinstance(file_name, str) and file_name.strip():
+        file_candidates.append(upload_root / file_name.strip())
+
+    for candidate in file_candidates:
+        try:
+            resolved = candidate if candidate.is_absolute() else (upload_root / candidate)
+            resolved = resolved.resolve()
+            if upload_root in resolved.parents and resolved.exists() and resolved.is_file():
+                resolved.unlink()
+                deleted_files += 1
+        except Exception:
+            continue
+
+    for chunk_file in chunk_dir.glob(f"{video_id}_*.chunk"):
+        try:
+            chunk_file.unlink()
+            deleted_files += 1
+        except Exception:
+            continue
+
+    try:
+        metadata_file.unlink()
+        deleted_files += 1
+    except Exception:
+        pass
+
+    return BaseResponse(
+        success=True,
+        message="视频删除成功",
+        data={
+            "id": video_id,
+            "deleted_files": deleted_files
+        }
+    )
+
 @app.get("/api/v1/knowledge/search", tags=["知识检索"])
 @handle_exceptions
 async def search_knowledge(

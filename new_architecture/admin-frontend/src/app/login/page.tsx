@@ -215,24 +215,6 @@ export default function LoginPage() {
         </div>
       </Card>
 
-      {/* 演示账户提示 */}
-      <div style={{
-        position: 'fixed',
-        bottom: 20,
-        right: 20,
-        background: 'rgba(0,0,0,0.8)',
-        color: 'white',
-        padding: '12px 20px',
-        borderRadius: 8,
-        fontSize: 14,
-        maxWidth: 300
-      }}>
-        <Text style={{ color: 'white' }}>
-          <strong>演示账户：</strong><br />
-          邮箱: admin@smartcourse.com<br />
-          密码: Admin@123
-        </Text>
-      </div>
     </div>
   )
 }

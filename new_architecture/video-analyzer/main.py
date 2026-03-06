@@ -13,10 +13,13 @@
 import os
 import sys
 import asyncio
+import json
+import tempfile
 from pathlib import Path
 from contextlib import asynccontextmanager
+from datetime import datetime
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -105,6 +108,7 @@ class VideoAnalyzer:
     
     def __init__(self):
         self.whisper_model = None
+        self.faster_whisper_model = None
         self.clip_model = None
         self.yolo_model = None
     
@@ -122,6 +126,9 @@ class VideoAnalyzer:
             # self.clip_model = CLIPModel.from_pretrained(cfg.ai.clip_model)
             # self.clip_processor = CLIPProcessor.from_pretrained(cfg.ai.clip_model)
             
+        except SystemExit as e:
+            logger.error(f"模型加载触发系统退出: {e}")
+            raise RuntimeError(f"模型加载触发系统退出: {e}") from e
         except Exception as e:
             logger.error(f"模型加载失败: {e}")
             # 在开发环境中，我们可以使用模拟模式
@@ -162,23 +169,125 @@ class VideoAnalyzer:
                     "language": "zh",
                     "duration": 120.0
                 }
-            
-            # 实际Whisper转录
-            import whisper
+
+            use_faster_whisper = os.getenv("USE_FASTER_WHISPER", "true").lower() == "true"
+            if use_faster_whisper:
+                try:
+                    from faster_whisper import WhisperModel
+                    if self.faster_whisper_model is None:
+                        self.faster_whisper_model = WhisperModel(
+                            cfg.ai.whisper_model,
+                            device=os.getenv("WHISPER_DEVICE", "cpu"),
+                            compute_type=os.getenv("FASTER_WHISPER_COMPUTE_TYPE", "int8")
+                        )
+                    logger.info(f"开始转录视频: {video_path}")
+                    segments, info = self.faster_whisper_model.transcribe(
+                        str(video_path),
+                        language="zh",
+                        task="transcribe"
+                    )
+                    segment_list = []
+                    text_parts = []
+                    duration = float(getattr(info, "duration", 0.0) or 0.0)
+                    for idx, seg in enumerate(segments):
+                        seg_text = (seg.text or "").strip()
+                        if seg_text:
+                            text_parts.append(seg_text)
+                        segment_list.append(
+                            {
+                                "id": idx,
+                                "start": float(seg.start),
+                                "end": float(seg.end),
+                                "text": seg_text,
+                            }
+                        )
+                    result = {
+                        "text": " ".join(text_parts).strip(),
+                        "segments": segment_list,
+                        "language": getattr(info, "language", "zh"),
+                        "duration": duration,
+                    }
+                    logger.info(f"转录完成，时长: {result['duration']:.2f}秒")
+                    return result
+                except Exception as e:
+                    logger.warning(f"faster-whisper转录失败，回退到whisper子进程: {e}")
             
             logger.info(f"开始转录视频: {video_path}")
-            result = self.whisper_model.transcribe(
+            use_subprocess = os.getenv("WHISPER_SUBPROCESS", "true").lower() == "true"
+            if not use_subprocess:
+                if self.whisper_model is None:
+                    await self.load_models()
+                result = self.whisper_model.transcribe(
+                    str(video_path),
+                    language="zh",
+                    task="transcribe",
+                    fp16=False
+                )
+                logger.info(f"转录完成，时长: {result['duration']:.2f}秒")
+                return result
+
+            with tempfile.NamedTemporaryFile(prefix="whisper_result_", suffix=".json", delete=False) as tmp_file:
+                result_file = tmp_file.name
+            script = """
+import json
+import sys
+import whisper
+
+model_name, video_path, result_file = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    model = whisper.load_model(model_name)
+    result = model.transcribe(video_path, language="zh", task="transcribe", fp16=False)
+    with open(result_file, "w", encoding="utf-8") as f:
+        json.dump({"ok": True, "result": result}, f, ensure_ascii=False)
+except BaseException as e:
+    with open(result_file, "w", encoding="utf-8") as f:
+        json.dump({"ok": False, "error": f"{type(e).__name__}: {e}"}, f, ensure_ascii=False)
+    raise
+"""
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-c",
+                script,
+                cfg.ai.whisper_model,
                 str(video_path),
-                language="zh",
-                task="transcribe"
+                result_file,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
+            _, stderr = await process.communicate()
+            if not Path(result_file).exists():
+                raise RuntimeError("转录子进程未生成结果文件")
+            raw_payload = Path(result_file).read_text(encoding="utf-8").strip()
+            Path(result_file).unlink(missing_ok=True)
+            if not raw_payload:
+                stderr_text = stderr.decode("utf-8", errors="ignore")[-400:]
+                if process.returncode and process.returncode != 0:
+                    if process.returncode == 139:
+                        raise RuntimeError("转录子进程崩溃: Segmentation fault (RC=139)")
+                    raise RuntimeError(f"转录子进程异常退出: RC={process.returncode}, STDERR={stderr_text or 'EMPTY'}")
+                raise RuntimeError(stderr_text or "转录子进程返回空结果")
+            payload = json.loads(raw_payload)
+            if process.returncode != 0:
+                error_text = payload.get("error") if isinstance(payload, dict) else None
+                stderr_text = stderr.decode("utf-8", errors="ignore")[-400:]
+                raise RuntimeError(error_text or stderr_text or "转录子进程执行失败")
+            if not payload.get("ok"):
+                raise RuntimeError(payload.get("error", "转录子进程返回失败"))
+            result = payload["result"]
             
             logger.info(f"转录完成，时长: {result['duration']:.2f}秒")
             return result
             
+        except SystemExit as e:
+            error_text = f"SystemExit: {e}"
+            logger.warning(f"视频转录降级处理: {error_text}")
+            return {"text": "", "segments": [], "language": "zh", "duration": 0.0, "error": error_text}
         except Exception as e:
-            logger.error(f"视频转录失败: {e}")
-            raise
+            error_text = str(e)
+            if "█" in error_text or "MiB/s" in error_text:
+                error_text = "Whisper 子进程异常退出（可能资源不足）"
+            logger.warning(f"视频转录降级处理: {error_text}")
+            return {"text": "", "segments": [], "language": "zh", "duration": 0.0, "error": error_text}
     
     async def extract_keyframes(self, video_path: Path, interval: int = 10) -> list:
         """提取关键帧
@@ -406,33 +515,29 @@ async def upload_video(
 @app.post("/api/v1/videos/analyze")
 async def analyze_video(
     video_path: str,
-    course_id: int = None
+    course_id: int = None,
+    sync: bool = False,
+    background_tasks: BackgroundTasks = None
 ):
-    """分析视频"""
+    """分析视频（异步处理）"""
     try:
-        # 确保模型已加载
-        if video_analyzer.whisper_model is None:
+        # 子进程转录模式下不在主进程加载Whisper，避免重复占用内存
+        use_subprocess = os.getenv("WHISPER_SUBPROCESS", "true").lower() == "true"
+        if video_analyzer.whisper_model is None and not use_subprocess:
             await video_analyzer.load_models()
         
-        # 路径归一化处理：处理 Docker 卷映射路径差异
-        # 容器内 uploads 挂载在 /app/uploads
-        # 传入的 video_path 可能是 /app/uploads/xxx 或其他绝对路径
-        # 我们只取文件名，并在 /app/uploads 下查找
-        
+        # 路径归一化处理
         target_dir = Path("/app/uploads")
         original_path_obj = Path(video_path)
         
-        # 优先尝试原始路径
         if original_path_obj.exists():
             video_path_obj = original_path_obj
         else:
-            # 尝试在 /app/uploads 下查找同名文件
             fallback_path = target_dir / original_path_obj.name
             if fallback_path.exists():
                 logger.info(f"原始路径不存在，使用同名文件路径: {fallback_path}")
                 video_path_obj = fallback_path
             else:
-                # 再次尝试解码 URL 编码的文件名（应对特殊字符）
                 import urllib.parse
                 decoded_name = urllib.parse.unquote(original_path_obj.name)
                 decoded_path = target_dir / decoded_name
@@ -446,8 +551,52 @@ async def analyze_video(
                         detail=f"视频文件不存在: {original_path_obj.name}"
                     )
         
-        logger.info(f"开始分析视频: {video_path_obj}")
+        # 生成任务ID
+        job_id = f"job_{datetime.now().strftime('%Y%m%d%H%M%S')}_{course_id or 'temp'}"
+        logger.info(f"接受视频分析任务: {job_id}, 路径: {video_path_obj}")
 
+        # 同步模式用于Worker串行处理后续步骤
+        if sync:
+            logger.info(f"同步模式执行视频分析: {job_id}")
+            return await process_video_task(job_id, video_path_obj, course_id)
+
+        # 在后台执行耗时任务
+        if background_tasks:
+            background_tasks.add_task(
+                process_video_task, 
+                job_id, 
+                video_path_obj, 
+                course_id
+            )
+        else:
+            # 如果没有传入 background_tasks（例如测试环境），则同步执行（不推荐）
+            logger.warning("未检测到 BackgroundTasks，将同步执行分析（可能导致超时）")
+            return await process_video_task(job_id, video_path_obj, course_id)
+
+        return {
+            "success": True,
+            "message": "视频分析任务已提交",
+            "data": {
+                "job_id": job_id,
+                "status": "processing",
+                "video_path": str(video_path_obj)
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"提交分析任务失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"提交分析任务失败: {str(e)}"
+        )
+
+async def process_video_task(job_id: str, video_path_obj: Path, course_id: int = None):
+    """后台处理视频分析任务"""
+    try:
+        logger.info(f"开始执行后台分析任务: {job_id}")
+        
         transcript_result = await video_analyzer.transcribe_video(video_path_obj)
         if isinstance(transcript_result, Exception):
             logger.error(f"转录失败: {transcript_result}")
@@ -473,31 +622,34 @@ async def analyze_video(
         
         # 构建分析结果
         analysis_result = {
+            "job_id": job_id,
             "video_path": str(video_path_obj),
             "course_id": course_id,
             "transcript": transcript_result,
             "keyframes": keyframes_result,
             "scenes": scenes_result,
-            "analysis_time": "2026-03-01T20:37:00Z",
+            "analysis_time": datetime.utcnow().isoformat(),
             "status": "completed"
         }
         
-        logger.info(f"视频分析完成: {video_path}")
+        logger.info(f"后台任务完成: {job_id}")
         
+        # TODO: 这里应该将结果回调给 Worker 或写入数据库/Redis
+        # 目前 Worker 是同步等待 response，改为异步后 Worker 需要轮询或接收回调
+        # 为了兼容现有 Worker 逻辑，这里暂时直接返回结果（仅对同步调用有效）
         return {
             "success": True,
             "message": "视频分析完成",
             "data": analysis_result
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"视频分析失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"视频分析失败: {str(e)}"
-        )
+        logger.error(f"后台任务执行失败 {job_id}: {e}")
+        return {
+            "success": False,
+            "message": f"视频分析失败: {str(e)}",
+            "error": str(e)
+        }
 
 # ============================================================================
 # 主函数

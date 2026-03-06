@@ -36,12 +36,14 @@ class VideoAnalysisWorker:
         self.rabbitmq_url = get_rabbitmq_url()
         self.queue_name = get_video_analysis_queue_name()
         self.analyzer_url = os.getenv("VIDEO_ANALYZER_URL", "http://localhost:8002")
+        self.knowledge_extractor_url = os.getenv("KNOWLEDGE_EXTRACTOR_URL", "http://knowledge-extractor:8003")
+        self.enable_knowledge_pipeline = os.getenv("ENABLE_KNOWLEDGE_PIPELINE", "true").lower() == "true"
         self.max_retries = int(os.getenv("ANALYZER_MAX_RETRIES", "3"))
         self.retry_delay = float(os.getenv("ANALYZER_RETRY_DELAY", "2.0"))
 
     async def call_video_analyzer(self, file_path: str, course_id: Optional[int] = None) -> Dict[str, Any]:
         url = f"{self.analyzer_url.rstrip('/')}/api/v1/videos/analyze"
-        params: Dict[str, Any] = {"video_path": file_path}
+        params: Dict[str, Any] = {"video_path": file_path, "sync": "true"}
         if course_id is not None:
             params["course_id"] = course_id
         
@@ -50,8 +52,7 @@ class VideoAnalysisWorker:
         
         async with httpx.AsyncClient(timeout=timeout) as client:
             last_error: Optional[Exception] = None
-            # 增加重试次数
-            max_retries = 5
+            max_retries = self.max_retries
             
             for attempt in range(1, max_retries + 1):
                 try:
@@ -88,6 +89,18 @@ class VideoAnalysisWorker:
             
             raise RuntimeError(f"调用视频分析服务失败，已重试{max_retries}次: {last_error}")
 
+    async def call_knowledge_extractor(self, analysis_result: Dict[str, Any], course_id: Optional[int] = None) -> Dict[str, Any]:
+        url = f"{self.knowledge_extractor_url.rstrip('/')}/api/v1/knowledge/process"
+        payload: Dict[str, Any] = {"video_analysis": analysis_result}
+        if course_id is not None:
+            payload["course_id"] = course_id
+        timeout = httpx.Timeout(3600.0, connect=60.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, json=payload)
+            response.raise_for_status()
+            body = response.json()
+            return body.get("data", body)
+
     def _resolve_metadata_path(self, upload_id: str, file_path: Optional[str]) -> Path:
         if file_path:
             upload_root = Path(file_path).expanduser().resolve().parent
@@ -102,6 +115,7 @@ class VideoAnalysisWorker:
         file_path: Optional[str] = None,
         analysis_result: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None,
+        worker_stage: Optional[str] = None,
     ) -> None:
         metadata_path = self._resolve_metadata_path(upload_id, file_path)
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
@@ -114,6 +128,8 @@ class VideoAnalysisWorker:
         metadata["updated_at"] = datetime.utcnow().isoformat()
         metadata.setdefault("metadata", {})
         metadata["metadata"]["worker"] = {"updated_at": datetime.utcnow().isoformat()}
+        if worker_stage:
+            metadata["metadata"]["worker"]["stage"] = worker_stage
         if analysis_result is not None:
             metadata["metadata"]["analysis_result"] = analysis_result
         if error:
@@ -133,7 +149,28 @@ class VideoAnalysisWorker:
             WORKER_IN_PROGRESS.inc()
             try:
                 with TASK_DURATION_SECONDS.time():
-                    result = await self.call_video_analyzer(file_path=file_path, course_id=course_id)
+                    self.update_upload_metadata(
+                        upload_id,
+                        "processing",
+                        file_path=file_path,
+                        worker_stage="analyzing"
+                    )
+                    analysis_result = await self.call_video_analyzer(file_path=file_path, course_id=course_id)
+                    result = analysis_result
+                    if self.enable_knowledge_pipeline:
+                        self.update_upload_metadata(
+                            upload_id,
+                            "processing",
+                            file_path=file_path,
+                            worker_stage="knowledge_processing"
+                        )
+                        result = await self.call_knowledge_extractor(analysis_result=analysis_result, course_id=course_id)
+                    self.update_upload_metadata(
+                        upload_id,
+                        "processing",
+                        file_path=file_path,
+                        worker_stage="knowledge_completed"
+                    )
                 self.update_upload_metadata(
                     upload_id,
                     "completed",

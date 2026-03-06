@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { 
   Layout, 
   Card, 
@@ -95,10 +95,6 @@ export default function SearchPage() {
   const { data: searchData, isLoading, refetch, isFetching } = useQuery<SearchResponse>({
     queryKey: ['search', query, searchType, searchLimit, weights],
     queryFn: () => {
-      if (!query.trim()) {
-        return Promise.resolve({ success: true, data: { results: [], total: 0 } })
-      }
-      
       if (searchType === 'hybrid') {
         return api.search.hybridSearch(query, weights, searchLimit).then((res) => res.data as SearchResponse)
       } else if (searchType === 'semantic') {
@@ -124,9 +120,7 @@ export default function SearchPage() {
     }
     
     // 触发搜索
-    setTimeout(() => {
-      refetch()
-    }, 100)
+    refetch()
   }
 
   const handleSearchTypeChange = (type: string) => {
@@ -160,9 +154,7 @@ export default function SearchPage() {
 
   const handleHistoryClick = (historyQuery: string) => {
     setQuery(historyQuery)
-    setTimeout(() => {
-      refetch()
-    }, 100)
+    refetch()
   }
 
   const getResultIcon = (type: string) => {
@@ -628,50 +620,6 @@ export default function SearchPage() {
               )}
             </Card>
 
-            {/* 热门搜索 */}
-            <Card 
-              title={
-                <Space>
-                  <FireOutlined />
-                  <span>热门搜索</span>
-                </Space>
-              }
-              style={{ marginTop: 16 }}
-            >
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {[
-                  'Python编程入门',
-                  '机器学习基础',
-                  '深度学习实战',
-                  '数据结构与算法',
-                  'Web开发教程',
-                  '人工智能应用',
-                  '数据分析方法',
-                  '云计算技术',
-                ].map((hotQuery, index) => (
-                  <Card 
-                    key={index}
-                    size="small"
-                    hoverable
-                    onClick={() => handleHistoryClick(hotQuery)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <Badge 
-                        count={index + 1} 
-                        style={{ 
-                          backgroundColor: index < 3 ? '#ef4444' : '#6b7280',
-                          marginRight: 8,
-                        }} 
-                      />
-                      <Text ellipsis style={{ flex: 1 }}>
-                        {hotQuery}
-                      </Text>
-                    </div>
-                  </Card>
-                ))}
-              </Space>
-            </Card>
           </Col>
         </Row>
       </Content>

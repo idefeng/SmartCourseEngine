@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Layout, Menu, Button, Card, Row, Col, Statistic, Typography, Space, Alert, Dropdown, Avatar } from 'antd'
 import {
   DashboardOutlined,
@@ -20,6 +20,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/auth-context'
 import NotificationCenter from '@/components/notification/NotificationCenter'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/services/api'
 
 const { Header, Sider, Content } = Layout
 const { Title, Text } = Typography
@@ -28,26 +30,49 @@ export default function HomePage() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({
+
+  const getTotal = (value: any, paths: string[][]) => {
+    for (const path of paths) {
+      let current = value
+      for (const key of path) {
+        current = current?.[key]
+      }
+      const num = Number(current)
+      if (Number.isFinite(num)) {
+        return num
+      }
+    }
+    return 0
+  }
+
+  const { data: statsData, isLoading: loading } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const [coursesRes, videosRes, knowledgeRes] = await Promise.allSettled([
+        api.courses.getCourses({ page: 1, page_size: 1 }),
+        api.videos.getVideos({ page: 1, page_size: 1 }),
+        api.knowledge.getKnowledgePoints({ page: 1, page_size: 1 }),
+      ])
+
+      const coursesValue = coursesRes.status === 'fulfilled' ? coursesRes.value : null
+      const videosValue = videosRes.status === 'fulfilled' ? videosRes.value : null
+      const knowledgeValue = knowledgeRes.status === 'fulfilled' ? knowledgeRes.value : null
+
+      return {
+        courses: getTotal(coursesValue, [['pagination', 'total'], ['total']]),
+        videos: getTotal(videosValue, [['total'], ['pagination', 'total']]),
+        knowledgePoints: getTotal(knowledgeValue, [['total'], ['pagination', 'total']]),
+        users: 0,
+      }
+    },
+  })
+
+  const stats = statsData || {
     courses: 0,
     videos: 0,
     knowledgePoints: 0,
     users: 0,
-  })
-
-  useEffect(() => {
-    // 模拟加载数据
-    setTimeout(() => {
-      setStats({
-        courses: 12,
-        videos: 45,
-        knowledgePoints: 256,
-        users: 89,
-      })
-      setLoading(false)
-    }, 1000)
-  }, [])
+  }
 
   const menuItems = [
     {

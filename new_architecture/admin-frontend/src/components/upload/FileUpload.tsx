@@ -224,6 +224,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
 
+  const getStageText = (task: UploadTask) => {
+    const workerStage = task.metadata?.worker?.stage;
+    if (!workerStage) return '';
+    if (workerStage === 'analyzing') return '视频转录中';
+    if (workerStage === 'knowledge_processing') return '知识提取中';
+    if (workerStage === 'knowledge_completed') return '知识提取完成';
+    return String(workerStage);
+  };
+
   // 获取文件图标
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
@@ -271,7 +280,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               type="primary"
               icon={<UploadOutlined />}
               loading={uploading}
-              disabled={isLoading || !isAuthenticated}
+              disabled={isLoading}
               onClick={() => fileInputRef.current?.click()}
             >
               选择文件
@@ -353,15 +362,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
                           />
                         )}
                         {task.status === UploadStatus.PROCESSING && (
-                          <Progress
-                            percent={task.progress || 0}
-                            size="small"
-                            status="active"
-                            strokeColor={{
-                              '0%': '#108ee9',
-                              '100%': '#87d068',
-                            }}
-                          />
+                          <>
+                            <Progress
+                              percent={task.progress || 0}
+                              size="small"
+                              status="active"
+                              strokeColor={{
+                                '0%': '#108ee9',
+                                '100%': '#87d068',
+                              }}
+                            />
+                            {getStageText(task) && (
+                              <Text type="secondary">{getStageText(task)}</Text>
+                            )}
+                          </>
                         )}
                       </Space>
                     </div>
@@ -412,6 +426,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   <div>
                     <Text strong>状态: </Text>
                     {getStatusTag(selectedTask.status)}
+                    {getStageText(selectedTask) && (
+                      <Text type="secondary" style={{ marginLeft: 8 }}>
+                        {getStageText(selectedTask)}
+                      </Text>
+                    )}
                   </div>
                   <div>
                     <Text strong>创建时间: </Text>

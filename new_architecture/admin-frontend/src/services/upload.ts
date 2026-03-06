@@ -80,6 +80,7 @@ type UploadEventListener = (event: UploadEvent) => void;
 export class FileUploadManager {
   private tasks: Map<string, UploadTask> = new Map();
   private eventListeners: Map<UploadEventType, UploadEventListener[]> = new Map();
+  private statusPollingTimers: Map<string, number> = new Map();
   private config: UploadConfig;
   private wsClient = getWebSocketClient();
 
@@ -150,9 +151,8 @@ export class FileUploadManager {
 
       // 完成上传
       const completedTask = await this.completeUpload(task.upload_id);
-      
-      // 触发完成事件
-      this.emitEvent(UploadEventType.COMPLETED, completedTask);
+      this.emitEvent(UploadEventType.PROGRESS, completedTask);
+      this.startStatusPolling(task.upload_id);
 
       return completedTask;
     } catch (error) {
@@ -303,6 +303,41 @@ export class FileUploadManager {
     } catch (error) {
       console.error('获取上传状态失败:', error);
       throw error;
+    }
+  }
+
+  private startStatusPolling(uploadId: string): void {
+    if (this.statusPollingTimers.has(uploadId)) {
+      return;
+    }
+    const timerId = window.setInterval(async () => {
+      try {
+        const latestTask = await this.getUploadStatus(uploadId);
+        const existingTask = this.tasks.get(uploadId);
+        const mergedTask = { ...existingTask, ...latestTask } as UploadTask;
+        this.tasks.set(uploadId, mergedTask);
+        this.emitEvent(UploadEventType.PROGRESS, mergedTask);
+        if (mergedTask.status === UploadStatus.COMPLETED) {
+          this.stopStatusPolling(uploadId);
+          this.emitEvent(UploadEventType.COMPLETED, mergedTask);
+        } else if (mergedTask.status === UploadStatus.FAILED || mergedTask.status === UploadStatus.CANCELLED) {
+          this.stopStatusPolling(uploadId);
+          this.emitEvent(UploadEventType.FAILED, mergedTask, {
+            error: mergedTask.metadata?.analysis_error || '处理失败'
+          });
+        }
+      } catch (error) {
+        console.error(`轮询任务状态失败: ${uploadId}`, error);
+      }
+    }, 3000);
+    this.statusPollingTimers.set(uploadId, timerId);
+  }
+
+  private stopStatusPolling(uploadId: string): void {
+    const timerId = this.statusPollingTimers.get(uploadId);
+    if (timerId !== undefined) {
+      window.clearInterval(timerId);
+      this.statusPollingTimers.delete(uploadId);
     }
   }
 

@@ -155,7 +155,10 @@ services:
       - DEBUG=true
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/smartcourse
       - REDIS_URL=redis://redis:6379/0
-      - WHISPER_MODEL=base
+      - AI_WHISPER_MODEL=tiny
+      - USE_FASTER_WHISPER=true
+      - FASTER_WHISPER_COMPUTE_TYPE=int8
+      - WHISPER_SUBPROCESS=true
       - WHISPER_DEVICE=cpu
       - ENABLE_KEYFRAMES=false
       - ENABLE_SCENES=false
@@ -186,6 +189,8 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - VIDEO_ANALYZER_URL=http://video-analyzer:8002
+      - KNOWLEDGE_EXTRACTOR_URL=http://knowledge-extractor:8003
+      - ENABLE_KNOWLEDGE_PIPELINE=true
       - UPLOAD_DIR=/app/uploads
       - WORKER_METRICS_PORT=9108
       - LOG_LEVEL=INFO

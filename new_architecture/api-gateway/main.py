@@ -12,9 +12,10 @@ SmartCourseEngine的API网关，提供统一的API入口、认证、路由和限
 
 import os
 import sys
+import json
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 # 添加共享模块路径
 # 将 api-gateway 的父目录 (new_architecture) 添加到 sys.path
@@ -190,7 +191,7 @@ async def general_exception_handler(request, exc: Exception):
 
 async def verify_api_key(api_key: str = Depends(lambda: "")):
     """验证API密钥"""
-    if not service_config.security.require_api_key:
+    if not cfg.security.require_api_key:
         return True
     
     # 这里应该实现实际的API密钥验证逻辑
@@ -322,6 +323,80 @@ async def analyze_video(
         data={"analysis_id": "demo-analysis-id"}
     )
 
+@app.get("/api/v1/videos", tags=["视频"])
+@handle_exceptions
+async def list_videos(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(10, ge=1, le=100, description="每页大小"),
+    search: Optional[str] = Query(None, description="搜索关键词"),
+    authenticated: bool = Depends(verify_api_key)
+):
+    upload_root = Path("/app/uploads")
+    metadata_dir = upload_root / "temp"
+    records: List[Dict[str, Any]] = []
+    if metadata_dir.exists():
+        for metadata_file in metadata_dir.glob("*.json"):
+            try:
+                payload = json.loads(metadata_file.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            upload_id = payload.get("upload_id") or metadata_file.stem
+            file_name = payload.get("file_name") or ""
+            ext = Path(file_name).suffix.lower().lstrip(".")
+            custom_meta = payload.get("metadata") or {}
+            analysis_result = custom_meta.get("analysis_result")
+            worker_meta = custom_meta.get("worker") if isinstance(custom_meta.get("worker"), dict) else {}
+            knowledge_points_count = 0
+            if isinstance(analysis_result, dict) and isinstance(analysis_result.get("knowledge_points"), list):
+                knowledge_points_count = len(analysis_result.get("knowledge_points") or [])
+            transcript = None
+            if isinstance(analysis_result, dict):
+                transcript = analysis_result.get("transcript")
+            created_at = payload.get("created_at") or datetime.now().isoformat()
+            updated_at = payload.get("updated_at") or created_at
+            item: Dict[str, Any] = {
+                "id": str(upload_id),
+                "title": Path(file_name).stem or str(upload_id),
+                "description": str(custom_meta.get("description") or ""),
+                "file_path": payload.get("file_path") or f"/uploads/{file_name}",
+                "thumbnail_url": "",
+                "duration": float((transcript or {}).get("duration", 0) or 0),
+                "file_size": int(payload.get("file_size") or 0),
+                "format": ext or "mp4",
+                "status": str(payload.get("status") or "processing"),
+                "progress": int((len(payload.get("uploaded_chunks") or []) / max(int(payload.get("total_chunks") or 1), 1)) * 100),
+                "course_id": custom_meta.get("course_id"),
+                "created_at": created_at,
+                "updated_at": updated_at,
+                "analysis_result": analysis_result,
+                "transcript": transcript,
+                "pipeline_stage": worker_meta.get("stage"),
+                "knowledge_points_count": knowledge_points_count,
+            }
+            records.append(item)
+    records.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    if search:
+        key = search.strip().lower()
+        records = [
+            item for item in records
+            if key in (item.get("title") or "").lower()
+            or key in (item.get("description") or "").lower()
+            or key in (item.get("id") or "").lower()
+        ]
+    total = len(records)
+    start = (page - 1) * page_size
+    end = start + page_size
+    return BaseResponse(
+        success=True,
+        message="获取视频列表成功",
+        data={
+            "items": records[start:end],
+            "total": total,
+            "page": page,
+            "page_size": page_size
+        }
+    )
+
 @app.get("/api/v1/knowledge/search", tags=["知识检索"])
 @handle_exceptions
 async def search_knowledge(
@@ -338,6 +413,89 @@ async def search_knowledge(
             "query": query,
             "results": [],
             "total": 0
+        }
+    )
+
+@app.get("/api/v1/knowledge/points", tags=["知识点"])
+@handle_exceptions
+async def list_knowledge_points(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(10, ge=1, le=200, description="每页大小"),
+    search: Optional[str] = Query(None, description="搜索关键词"),
+    authenticated: bool = Depends(verify_api_key)
+):
+    metadata_dir = Path("/app/uploads/temp")
+    points: List[Dict[str, Any]] = []
+    if metadata_dir.exists():
+        for metadata_file in metadata_dir.glob("*.json"):
+            try:
+                payload = json.loads(metadata_file.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            meta = payload.get("metadata") or {}
+            analysis_result = meta.get("analysis_result") or {}
+            kp_list = analysis_result.get("knowledge_points") if isinstance(analysis_result, dict) else None
+            if not isinstance(kp_list, list):
+                continue
+            course_id = analysis_result.get("course_id") or meta.get("course_id")
+            created_at = payload.get("created_at") or datetime.now().isoformat()
+            updated_at = payload.get("updated_at") or created_at
+            for idx, kp in enumerate(kp_list):
+                if not isinstance(kp, dict):
+                    continue
+                start_time = kp.get("timestamp")
+                end_time = kp.get("timestamp")
+                if isinstance(start_time, str) and ":" in start_time:
+                    parts = start_time.split(":")
+                    try:
+                        start_time = int(parts[0]) * 60 + int(parts[1])
+                        end_time = start_time
+                    except Exception:
+                        start_time = 0
+                        end_time = 0
+                else:
+                    start_time = float(start_time or 0)
+                    end_time = float(end_time or start_time)
+                concepts = kp.get("keywords")
+                if not isinstance(concepts, list):
+                    concepts = []
+                point = {
+                    "id": int(f"{abs(hash(str(payload.get('upload_id') or metadata_file.stem))) % 100000}{idx}"),
+                    "name": kp.get("title") or f"知识点{idx + 1}",
+                    "description": kp.get("content") or "",
+                    "category": kp.get("category") or "通用",
+                    "importance": int(kp.get("importance") or 3),
+                    "confidence": float(kp.get("confidence") or 0.8),
+                    "start_time": float(start_time),
+                    "end_time": float(end_time),
+                    "course_id": int(course_id) if course_id is not None else 0,
+                    "concepts": concepts,
+                    "embedding": kp.get("embedding") if isinstance(kp.get("embedding"), list) else [],
+                    "created_at": created_at,
+                    "updated_at": updated_at
+                }
+                points.append(point)
+    if search:
+        key = search.strip().lower()
+        points = [
+            item for item in points
+            if key in (item.get("name") or "").lower()
+            or key in (item.get("description") or "").lower()
+            or key in (item.get("category") or "").lower()
+            or any(key in str(concept).lower() for concept in (item.get("concepts") or []))
+        ]
+    points.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    total = len(points)
+    start = (page - 1) * page_size
+    end = start + page_size
+    return BaseResponse(
+        success=True,
+        message="获取知识点列表成功",
+        data={
+            "items": points[start:end],
+            "total": total,
+            "page": page,
+            "page_size": page_size
         }
     )
 

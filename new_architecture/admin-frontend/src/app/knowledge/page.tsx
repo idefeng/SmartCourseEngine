@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { 
   Layout, 
   Card, 
@@ -15,7 +15,6 @@ import {
   InputNumber,
   Tree,
   message,
-  Popconfirm,
   Tooltip,
   Badge,
   Avatar,
@@ -27,9 +26,6 @@ import {
   Progress,
 } from 'antd'
 import { 
-  PlusOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
   EyeOutlined,
   SearchOutlined,
   FilterOutlined,
@@ -40,10 +36,9 @@ import {
   ClusterOutlined,
   ShareAltOutlined,
   FileSearchOutlined,
-  HistoryOutlined,
   StarOutlined,
 } from '@ant-design/icons'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -102,70 +97,19 @@ export default function KnowledgePage() {
   const [selectedPoint, setSelectedPoint] = useState<KnowledgePoint | null>(null)
   const [knowledgeGraph, setKnowledgeGraph] = useState<KnowledgeGraph | null>(null)
   const [activeTab, setActiveTab] = useState('list')
-  const queryClient = useQueryClient()
-
   // 获取知识点列表
   const { data: knowledgeData, isLoading, refetch } = useQuery({
     queryKey: ['knowledge', searchText],
     queryFn: () => api.knowledge.getKnowledgePoints({ search: searchText }),
   })
 
-  const knowledgePoints: KnowledgePoint[] = knowledgeData?.data?.items || []
+  const knowledgePoints: KnowledgePoint[] = (knowledgeData as any)?.items || (knowledgeData as any)?.data?.items || []
 
   // 获取知识图谱
   const { data: graphData, isLoading: graphLoading } = useQuery({
-    queryKey: ['knowledge-graph'],
-    queryFn: () => {
-      // 模拟知识图谱数据
-      return Promise.resolve({
-        success: true,
-        message: '知识图谱获取成功',
-        data: {
-          nodes: [
-            { id: 'kp_1', type: 'knowledge_point', name: '变量声明', category: '编程基础', importance: 3 },
-            { id: 'kp_2', type: 'knowledge_point', name: '数据类型', category: '编程基础', importance: 4 },
-            { id: 'kp_3', type: 'knowledge_point', name: '条件语句', category: '控制流', importance: 4 },
-            { id: 'kp_4', type: 'knowledge_point', name: '循环语句', category: '控制流', importance: 4 },
-            { id: 'concept_变量', type: 'concept', name: '变量', category: '编程基础' },
-            { id: 'concept_赋值', type: 'concept', name: '赋值', category: '编程基础' },
-            { id: 'concept_数据类型', type: 'concept', name: '数据类型', category: '编程基础' },
-            { id: 'concept_if语句', type: 'concept', name: 'if语句', category: '控制流' },
-            { id: 'concept_循环', type: 'concept', name: '循环', category: '控制流' },
-          ],
-          edges: [
-            { source: 'kp_1', target: 'concept_变量', type: 'contains', weight: 0.9 },
-            { source: 'kp_1', target: 'concept_赋值', type: 'contains', weight: 0.8 },
-            { source: 'kp_2', target: 'concept_数据类型', type: 'contains', weight: 0.9 },
-            { source: 'kp_3', target: 'concept_if语句', type: 'contains', weight: 0.85 },
-            { source: 'kp_4', target: 'concept_循环', type: 'contains', weight: 0.85 },
-            { source: 'kp_1', target: 'kp_2', type: 'precedes', weight: 0.8 },
-            { source: 'kp_2', target: 'kp_3', type: 'precedes', weight: 0.7 },
-            { source: 'kp_3', target: 'kp_4', type: 'precedes', weight: 0.7 },
-          ],
-          metadata: {
-            total_nodes: 9,
-            total_edges: 8,
-            knowledge_points: 4,
-            generated_at: '2026-03-01T20:37:00Z',
-          },
-        },
-      })
-    },
-  })
-
-  // 删除知识点
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => {
-      // 模拟删除API
-      return Promise.resolve({ success: true, message: '删除成功' })
-    },
-    onSuccess: () => {
-      message.success('知识点删除成功')
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] })
-    },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || '删除失败')
-    },
+    queryKey: ['knowledge-graph', knowledgePoints.map((item) => item.id).join(',')],
+    queryFn: () => api.knowledge.buildKnowledgeGraph(knowledgePoints),
+    enabled: knowledgePoints.length > 0,
   })
 
   const handleSearch = (value: string) => {
@@ -178,12 +122,12 @@ export default function KnowledgePage() {
   }
 
   const handleViewGraph = () => {
-    setKnowledgeGraph(graphData?.data || null)
+    if (!graphData) {
+      message.warning('暂无可用知识图谱数据')
+      return
+    }
+    setKnowledgeGraph(((graphData as any)?.data || graphData) as KnowledgeGraph)
     setIsGraphModalOpen(true)
-  }
-
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id)
   }
 
   const formatTime = (seconds: number) => {
@@ -313,7 +257,7 @@ export default function KnowledgePage() {
     {
       title: '操作',
       key: 'action',
-      width: 120,
+      width: 80,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="查看详情">
@@ -323,21 +267,6 @@ export default function KnowledgePage() {
               onClick={() => handleViewDetails(record)}
             />
           </Tooltip>
-          <Popconfirm
-            title="确定要删除这个知识点吗？"
-            description="删除后无法恢复。"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Tooltip title="删除">
-              <Button 
-                type="text" 
-                danger 
-                icon={<DeleteOutlined />} 
-              />
-            </Tooltip>
-          </Popconfirm>
         </Space>
       ),
     },
@@ -349,6 +278,27 @@ export default function KnowledgePage() {
     concepts: knowledgePoints.reduce((acc, kp) => acc + (kp.concepts?.length || 0), 0),
     highImportance: knowledgePoints.filter(kp => kp.importance >= 4).length,
   }
+
+  const knowledgeTreeData = useMemo(() => {
+    const categoryMap = new Map<string, KnowledgePoint[]>()
+
+    knowledgePoints.forEach((point) => {
+      const category = point.category || '未分类'
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, [])
+      }
+      categoryMap.get(category)!.push(point)
+    })
+
+    return Array.from(categoryMap.entries()).map(([category, points]) => ({
+      title: category,
+      key: `category-${category}`,
+      children: points.map((point) => ({
+        title: point.name,
+        key: `point-${point.id}`,
+      })),
+    }))
+  }, [knowledgePoints])
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -381,6 +331,7 @@ export default function KnowledgePage() {
           <Button 
             type="primary" 
             icon={<ClusterOutlined />}
+            loading={graphLoading}
             onClick={handleViewGraph}
           >
             查看知识图谱
@@ -461,57 +412,8 @@ export default function KnowledgePage() {
             <div style={{ padding: 24, textAlign: 'center' }}>
               <Tree
                 showLine
-                defaultExpandedKeys={['root']}
-                treeData={[
-                  {
-                    title: '编程基础',
-                    key: 'programming',
-                    children: [
-                      {
-                        title: '变量和数据类型',
-                        key: 'variables',
-                        children: [
-                          { title: '变量声明', key: 'var-declaration' },
-                          { title: '数据类型', key: 'data-types' },
-                          { title: '类型转换', key: 'type-conversion' },
-                        ],
-                      },
-                      {
-                        title: '运算符',
-                        key: 'operators',
-                        children: [
-                          { title: '算术运算符', key: 'arithmetic' },
-                          { title: '比较运算符', key: 'comparison' },
-                          { title: '逻辑运算符', key: 'logical' },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    title: '控制流',
-                    key: 'control-flow',
-                    children: [
-                      {
-                        title: '条件语句',
-                        key: 'conditionals',
-                        children: [
-                          { title: 'if语句', key: 'if-statement' },
-                          { title: 'else语句', key: 'else-statement' },
-                          { title: 'switch语句', key: 'switch-statement' },
-                        ],
-                      },
-                      {
-                        title: '循环语句',
-                        key: 'loops',
-                        children: [
-                          { title: 'for循环', key: 'for-loop' },
-                          { title: 'while循环', key: 'while-loop' },
-                          { title: 'do-while循环', key: 'do-while-loop' },
-                        ],
-                      },
-                    ],
-                  },
-                ]}
+                defaultExpandAll
+                treeData={knowledgeTreeData}
               />
             </div>
           )}
@@ -702,7 +604,7 @@ export default function KnowledgePage() {
               <ClusterOutlined style={{ fontSize: 48, color: '#3b82f6', marginBottom: 16 }} />
               <h3>知识图谱可视化</h3>
               <p style={{ color: '#666', marginBottom: 24 }}>
-                这是一个模拟的知识图谱可视化界面。在实际部署中，这里会显示交互式的知识图谱。
+                当前展示基于真实知识点构建的图谱数据摘要。
               </p>
               
               <Row gutter={[16, 16]}>

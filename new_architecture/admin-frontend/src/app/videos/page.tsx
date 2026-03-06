@@ -69,6 +69,8 @@ interface Video {
   updated_at: string
   analysis_result: any
   transcript: any
+  pipeline_stage?: string
+  knowledge_points_count?: number
 }
 
 export default function VideosPage() {
@@ -86,9 +88,10 @@ export default function VideosPage() {
   const { data: videosData, isLoading, refetch } = useQuery({
     queryKey: ['videos', searchText],
     queryFn: () => api.videos.getVideos({ search: searchText }),
+    refetchInterval: 5000,
   })
 
-  const videos: Video[] = videosData?.data?.items || []
+  const videos: Video[] = (videosData as any)?.items || (videosData as any)?.data?.items || []
 
   // 上传视频
   const uploadMutation = useMutation({
@@ -221,6 +224,21 @@ export default function VideosPage() {
     }
   }
 
+  const getPipelineText = (video: Video) => {
+    if (video.status === 'processing') {
+      if (video.pipeline_stage === 'analyzing') return '视频转录中'
+      if (video.pipeline_stage === 'knowledge_processing') return '知识提取中'
+      if (video.pipeline_stage === 'knowledge_completed') return '知识提取完成'
+      return '处理中'
+    }
+    if (video.status === 'completed') {
+      const count = video.knowledge_points_count ?? video.analysis_result?.knowledge_points?.length ?? 0
+      if (count > 0) return `知识点已生成（${count}）`
+      return '分析已完成'
+    }
+    return ''
+  }
+
   const columns: ColumnsType<Video> = [
     {
       title: '视频',
@@ -285,6 +303,11 @@ export default function VideosPage() {
               status={config.color as any} 
               text={config.text}
             />
+            {getPipelineText(record) && (
+              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                {getPipelineText(record)}
+              </div>
+            )}
             {record.progress !== undefined && record.progress < 100 && (
               <Progress 
                 percent={record.progress} 
@@ -572,10 +595,15 @@ export default function VideosPage() {
                 {selectedVideo.description}
               </Descriptions.Item>
               <Descriptions.Item label="状态">
-                <Badge 
-                  status={getStatusConfig(selectedVideo.status).color as any} 
-                  text={getStatusConfig(selectedVideo.status).text}
-                />
+                <Space direction="vertical" size={4}>
+                  <Badge 
+                    status={getStatusConfig(selectedVideo.status).color as any} 
+                    text={getStatusConfig(selectedVideo.status).text}
+                  />
+                  {getPipelineText(selectedVideo) && (
+                    <span style={{ color: '#666' }}>{getPipelineText(selectedVideo)}</span>
+                  )}
+                </Space>
               </Descriptions.Item>
               <Descriptions.Item label="时长">
                 {formatDuration(selectedVideo.duration || 0)}

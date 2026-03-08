@@ -148,16 +148,16 @@ export default function CoursesPage() {
       title: '课程封面',
       dataIndex: 'thumbnail_url',
       key: 'thumbnail',
-      width: 100,
-      render: (url) => (
-        <div className="p-1 rounded-xl bg-slate-100/50 inline-block shadow-sm">
-          <Avatar
-            shape="square"
-            size={64}
-            src={url || '/default-course.png'}
-            icon={<BookOutlined />}
-            className="rounded-lg border border-white"
+      width: 140,
+      render: (url, record) => (
+        <div className="relative group cursor-pointer overflow-hidden rounded-xl shadow-md border border-slate-100 w-28 h-[72px] bg-slate-50 flex items-center justify-center">
+          <img
+            src={url || '/default-course.svg'}
+            alt={record.title}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
           />
+          {/* 装饰性罩层 */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300" />
         </div>
       ),
     },
@@ -287,7 +287,7 @@ export default function CoursesPage() {
 
   return (
     <>
-      <Header className="sticky top-0 z-40 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div>
           <Title level={3} className="!m-0 !font-bold text-slate-900">课程资产管理</Title>
           <Text type="secondary" className="text-xs">构建结构化知识体系，赋能智能化教学体验</Text>
@@ -306,7 +306,7 @@ export default function CoursesPage() {
         </Space>
       </Header>
 
-      <Content className="p-10">
+      <Content className="flex-1 overflow-y-auto p-10">
         <Card className="border-none shadow-sm overflow-hidden">
           <Table
             columns={columns}

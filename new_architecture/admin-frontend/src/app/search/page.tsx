@@ -24,6 +24,7 @@ import {
   Spin,
   Alert,
   Badge,
+  Modal,
 } from 'antd'
 import {
   SearchOutlined,
@@ -90,6 +91,8 @@ export default function SearchPage() {
   })
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false)
+  const [currentVideoUrl, setCurrentVideoUrl] = useState('')
 
   // 搜索查询
   const { data: searchData, isLoading, refetch, isFetching } = useQuery<SearchResponse>({
@@ -226,7 +229,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <Header className="sticky top-0 z-40 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div>
           <Title level={3} className="!m-0 !font-bold text-slate-900">智能搜索</Title>
           <Text type="secondary" className="text-xs">支持多种检索范式，快速定位核心教学资产与知识节点</Text>
@@ -235,7 +238,7 @@ export default function SearchPage() {
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} />
         </Space>
       </Header>
-      <Content className="p-10 space-y-8">
+      <Content className="flex-1 overflow-y-auto p-10 space-y-8">
         {/* 搜索框区域 */}
         <Card className="border-none shadow-sm premium-card-tabs p-4 overflow-hidden">
           <div className="text-center mb-8 pt-4">
@@ -478,7 +481,8 @@ export default function SearchPage() {
                               const path = result.metadata?.file_path;
                               if (path) {
                                 const url = path.startsWith('http') ? path : `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}${path}`;
-                                window.open(url, '_blank')
+                                setCurrentVideoUrl(url);
+                                setIsVideoPlayerOpen(true);
                               }
                             }
                           }}
@@ -616,6 +620,31 @@ export default function SearchPage() {
           </Col>
         </Row>
       </Content>
+
+      {/* 视频播放弹窗 */}
+      <Modal
+        title={null}
+        open={isVideoPlayerOpen}
+        onCancel={() => {
+          setIsVideoPlayerOpen(false)
+          setCurrentVideoUrl('')
+        }}
+        footer={null}
+        width={800}
+        centered
+        destroyOnHidden
+        className="video-player-modal"
+        styles={{ body: { padding: 0 } }}
+      >
+        {currentVideoUrl && (
+          <video
+            src={currentVideoUrl}
+            controls
+            autoPlay
+            className="w-full h-auto aspect-video bg-black rounded-lg"
+          />
+        )}
+      </Modal>
     </>
   )
 }

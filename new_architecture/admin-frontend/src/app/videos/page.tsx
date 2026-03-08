@@ -81,6 +81,8 @@ export default function VideosPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
+  const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false)
+  const [currentVideoUrl, setCurrentVideoUrl] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [form] = Form.useForm()
@@ -246,21 +248,23 @@ export default function VideosPage() {
       title: '视频',
       dataIndex: 'thumbnail_url',
       key: 'thumbnail',
-      width: 120,
+      width: 140,
       render: (url, record) => (
-        <div className="relative group cursor-pointer overflow-hidden rounded-xl shadow-sm border border-slate-100">
-          <Avatar
-            shape="square"
-            size={80}
-            src={url || '/default-video.png'}
-            icon={<VideoCameraOutlined />}
-            className="group-hover:scale-110 transition-transform duration-500"
+        <div className="relative group cursor-pointer overflow-hidden rounded-xl shadow-md border border-slate-100 w-28 h-[72px] bg-slate-50 flex items-center justify-center">
+          <img
+            src={url || '/default-video.svg'}
+            alt={record.title}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
           />
-          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 duration-300">
-            <PlayCircleOutlined className="text-white text-2xl" />
+          {/* 装饰性罩层 */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300" />
+
+          <div className="absolute inset-0 bg-indigo-600/10 group-hover:bg-indigo-600/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 duration-500">
+            <PlayCircleOutlined className="text-white text-3xl drop-shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300" />
           </div>
-          {record.duration && (
-            <div className="absolute bottom-1 right-1 bg-black/70 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+
+          {(record.duration || 0) > 0 && (
+            <div className="absolute bottom-1.5 right-1.5 bg-black/80 backdrop-blur-sm text-white px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-tight border border-white/10">
               {formatDuration(record.duration)}
             </div>
           )}
@@ -371,7 +375,8 @@ export default function VideosPage() {
                 onClick={() => {
                   const path = record.file_path;
                   const url = path.startsWith('http') ? path : `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}${path}`;
-                  window.open(url, '_blank');
+                  setCurrentVideoUrl(url);
+                  setIsVideoPlayerOpen(true);
                 }}
               />
             </Tooltip>
@@ -418,7 +423,7 @@ export default function VideosPage() {
 
   return (
     <>
-      <Header className="sticky top-0 z-40 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div>
           <Title level={3} className="!m-0 !font-bold">视频管理</Title>
           <Text type="secondary" className="text-xs">管理教学资源，深度挖掘视频知识价值</Text>
@@ -448,7 +453,7 @@ export default function VideosPage() {
         </div>
       </Header>
 
-      <Content className="p-10 space-y-8">
+      <Content className="flex-1 overflow-y-auto p-10 space-y-8">
         {/* 统计横廊 */}
         <Row gutter={[24, 24]}>
           {videoStats.map((item, idx) => (
@@ -578,7 +583,8 @@ export default function VideosPage() {
                     onClick={() => {
                       const path = selectedVideo.file_path;
                       const url = path.startsWith('http') ? path : `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}${path}`;
-                      window.open(url, '_blank');
+                      setCurrentVideoUrl(url);
+                      setIsVideoPlayerOpen(true);
                     }}
                   />
                 </div>
@@ -678,6 +684,31 @@ export default function VideosPage() {
               )}
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* 视频播放弹窗 */}
+      <Modal
+        title={null}
+        open={isVideoPlayerOpen}
+        onCancel={() => {
+          setIsVideoPlayerOpen(false)
+          setCurrentVideoUrl('')
+        }}
+        footer={null}
+        width={800}
+        centered
+        destroyOnHidden
+        className="video-player-modal"
+        styles={{ body: { padding: 0 } }}
+      >
+        {currentVideoUrl && (
+          <video
+            src={currentVideoUrl}
+            controls
+            autoPlay
+            className="w-full h-auto aspect-video bg-black rounded-lg"
+          />
         )}
       </Modal>
     </>

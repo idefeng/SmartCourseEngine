@@ -137,9 +137,9 @@ export default function AnalyticsPage() {
 
     return (
         <>
-            <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
-                <div>
-                    <Title level={4} className="!m-0 !font-black uppercase tracking-tight">数据引擎</Title>
+            <Header className="flex-none z-10 !h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+                <div className="flex flex-col">
+                    <Title level={4} className="!m-0 !font-black uppercase tracking-tight text-slate-900">数据引擎</Title>
                     <Text type="secondary" className="text-[10px] font-bold uppercase tracking-widest opacity-60">Analytics & Intelligent Insights</Text>
                 </div>
 

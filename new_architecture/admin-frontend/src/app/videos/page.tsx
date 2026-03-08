@@ -162,10 +162,17 @@ export default function VideosPage() {
     }
 
     const formData = new FormData()
-    const file = fileList[0].originFileObj
+    const file = fileList[0].originFileObj || (fileList[0] as unknown as File)
 
-    if (!file) {
-      message.error('文件无效')
+    if (!file || !(file instanceof File)) {
+      message.error('文件无效，请重新选择')
+      return
+    }
+
+    // 检查文件大小 (2GB)
+    const MAX_SIZE = 2 * 1024 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      message.error(`视频文件大小 (${formatFileSize(file.size)}) 已超过 2GB 限制`)
       return
     }
 
@@ -424,10 +431,10 @@ export default function VideosPage() {
 
   return (
     <>
-      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
-        <div>
-          <Title level={3} className="!m-0 !font-bold">视频管理</Title>
-          <Text type="secondary" className="text-xs">管理教学资源，深度挖掘视频知识价值</Text>
+      <Header className="flex-none z-10 !h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+        <div className="flex flex-col">
+          <Title level={3} className="!m-0 !font-bold text-slate-900">视频管理</Title>
+          <Text type="secondary" className="text-xs font-medium opacity-60">管理教学资源，深度挖掘视频知识价值</Text>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -525,22 +532,37 @@ export default function VideosPage() {
           <Form.Item
             label={<span className="font-bold text-slate-700">资源文件</span>}
             required
+            tooltip="我们将自动提取视频中的知识点、关键帧并生成智能转录文本"
           >
-            <Upload
+            <Upload.Dragger
               fileList={fileList}
               beforeUpload={(file) => {
+                // 检查文件大小 (2GB)
+                const MAX_SIZE = 2 * 1024 * 1024 * 1024
+                if (file.size > MAX_SIZE) {
+                  message.error(`文件过大 (${formatFileSize(file.size)})，单个上传限制为 2GB`)
+                  return Upload.LIST_IGNORE
+                }
                 setFileList([file])
                 return false
               }}
               onRemove={() => setFileList([])}
               maxCount={1}
               accept="video/*"
-              className="w-full"
+              className="premium-dragger group !bg-slate-50/50 hover:!bg-white !border-slate-100 hover:!border-indigo-300 !border-2 !rounded-3xl !p-10 transition-all duration-500"
             >
-              <Button icon={<UploadOutlined />} className="w-full h-24 border-dashed rounded-xl bg-slate-50 hover:bg-white hover:border-indigo-400 transition-all flex flex-col items-center justify-center">
-                <span className="mt-2 text-slate-500 font-medium">点击或将视频文件拖拽至此</span>
-              </Button>
-            </Upload>
+              <div className="flex flex-col items-center justify-center py-6">
+                <div className="w-20 h-20 rounded-3xl bg-white shadow-xl shadow-indigo-100 flex items-center justify-center text-indigo-500 text-3xl group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 border border-indigo-50 mb-6">
+                  <UploadOutlined className="animate-bounce" />
+                </div>
+                <div className="space-y-2 text-center">
+                  <div className="text-base font-black text-slate-800 tracking-tight">点击或将视频文件拖拽至此</div>
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full inline-block">
+                    MP4, MOV, MKV, AVI • MAX 2GB
+                  </div>
+                </div>
+              </div>
+            </Upload.Dragger>
           </Form.Item>
 
           {uploadProgress > 0 && (

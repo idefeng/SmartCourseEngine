@@ -24,7 +24,7 @@
   .glass-card {
     @apply backdrop-blur-md bg-white/70 border border-white/30 shadow-sm;
   }
-  
+
   .glass-sidebar {
     @apply backdrop-blur-xl bg-white/80 border-r border-white/20;
   }
@@ -54,9 +54,17 @@
 
 /* Animations */
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 .animate-float {
@@ -68,13 +76,24 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* Ant Design Overrides */
 .ant-layout {
   background: transparent !important;
+}
+
+.ant-layout-header {
+  height: auto !important;
+  line-height: normal !important;
+  padding: 0 !important;
 }
 
 .ant-layout-sider {
@@ -107,6 +126,10 @@
 }
 
 /* Typography */
-h1, h2, h3, h4, h5 {
+h1,
+h2,
+h3,
+h4,
+h5 {
   @apply tracking-tight font-semibold text-slate-800;
 }

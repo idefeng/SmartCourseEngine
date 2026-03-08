@@ -44,10 +44,13 @@ export default function VideoUploadPage() {
     setActiveTab('progress');
   };
 
-  const handleAnalysisCompleted = () => {
-    setCurrentStep(2);
-    setAnalysisCompleted(true);
-    setActiveTab('progress');
+  const handleAnalysisCompleted = (taskId: string) => {
+    if (!analysisCompleted) {
+      setCurrentStep(2);
+      setAnalysisCompleted(true);
+      setActiveTab('progress');
+      console.log('分析流水线最终完成:', taskId);
+    }
   };
 
   // 上传错误回调
@@ -76,7 +79,7 @@ export default function VideoUploadPage() {
 
   return (
     <>
-      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+      <Header className="flex-none z-10 !h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <Space>
           <Button type="text" onClick={() => router.push('/videos')}>
             返回视频列表

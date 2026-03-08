@@ -288,10 +288,10 @@ export default function CoursesPage() {
 
   return (
     <>
-      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
-        <div>
+      <Header className="flex-none z-10 !h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+        <div className="flex flex-col">
           <Title level={3} className="!m-0 !font-bold text-slate-900">课程资产管理</Title>
-          <Text type="secondary" className="text-xs">构建结构化知识体系，赋能智能化教学体验</Text>
+          <Text type="secondary" className="text-xs font-medium opacity-60">构建结构化知识体系，赋能智能化教学体验</Text>
         </div>
         <Space size="middle">
           <Search

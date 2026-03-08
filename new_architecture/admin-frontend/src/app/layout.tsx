@@ -71,15 +71,15 @@ export default function RootLayout({
               },
             }}
           >
-            <Providers>
-              <AppLayout>
-                <div className="page-transition">
-                  <App>
+            <App>
+              <Providers>
+                <AppLayout>
+                  <div className="page-transition flex-1 flex flex-col min-w-0 h-full min-h-0">
                     {children}
-                  </App>
-                </div>
-              </AppLayout>
-            </Providers>
+                  </div>
+                </AppLayout>
+              </Providers>
+            </App>
           </ConfigProvider>
         </AntdRegistry>
       </body>

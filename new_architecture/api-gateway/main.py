@@ -398,12 +398,35 @@ async def list_videos(
             custom_meta = payload.get("metadata") or {}
             analysis_result = custom_meta.get("analysis_result")
             worker_meta = custom_meta.get("worker") if isinstance(custom_meta.get("worker"), dict) else {}
-            knowledge_points_count = 0
-            if isinstance(analysis_result, dict) and isinstance(analysis_result.get("knowledge_points"), list):
-                knowledge_points_count = len(analysis_result.get("knowledge_points") or [])
+            # 增强提取逻辑，兼容深层嵌套结构
             transcript = None
+            keyframes = []
+            
             if isinstance(analysis_result, dict):
+                # 尝试从直接路径获取
                 transcript = analysis_result.get("transcript")
+                keyframes = analysis_result.get("keyframes") or []
+                
+                # 如果是嵌套结构 (res['video_analysis']['video_analysis']['transcript'])
+                if not transcript or not keyframes:
+                    va = analysis_result.get("video_analysis")
+                    if isinstance(va, dict):
+                        # 处理可能的双层嵌套
+                        va_inner = va.get("video_analysis") if isinstance(va.get("video_analysis"), dict) else va
+                        if not transcript:
+                            transcript = va_inner.get("transcript")
+                        if not keyframes:
+                            keyframes = va_inner.get("keyframes") or []
+                
+                # 更新知识点计数
+                kp_list = analysis_result.get("knowledge_points") or []
+                knowledge_points_count = len(kp_list) if isinstance(kp_list, list) else 0
+
+                # 确保关键信息回填到 analysis_result 顶级以便前端展示
+                if transcript and "transcript" not in analysis_result:
+                    analysis_result["transcript"] = transcript
+                if keyframes and "keyframes" not in analysis_result:
+                    analysis_result["keyframes"] = keyframes
             created_at = payload.get("created_at") or datetime.now().isoformat()
             updated_at = payload.get("updated_at") or created_at
             item: Dict[str, Any] = {
@@ -551,9 +574,22 @@ async def list_knowledge_points(
                 continue
             meta = payload.get("metadata") or {}
             analysis_result = meta.get("analysis_result") or {}
-            kp_list = analysis_result.get("knowledge_points") if isinstance(analysis_result, dict) else None
+            
+            # 使用与 list_videos 相同的增强提取逻辑
+            kp_list = analysis_result.get("knowledge_points")
+            if not isinstance(kp_list, list):
+                va = analysis_result.get("video_analysis") if isinstance(analysis_result, dict) else {}
+                if isinstance(va, dict):
+                    va_inner = va.get("video_analysis") if isinstance(va.get("video_analysis"), dict) else va
+                    kp_list = va_inner.get("knowledge_points") if isinstance(va_inner, dict) else None
+
             if not isinstance(kp_list, list):
                 continue
+
+            upload_id = payload.get("upload_id") or metadata_file.stem
+            file_name = payload.get("file_name") or ""
+            video_title = Path(file_name).stem
+            
             course_id = analysis_result.get("course_id") or meta.get("course_id")
             created_at = payload.get("created_at") or datetime.now().isoformat()
             updated_at = payload.get("updated_at") or created_at
@@ -576,16 +612,22 @@ async def list_knowledge_points(
                 concepts = kp.get("keywords")
                 if not isinstance(concepts, list):
                     concepts = []
+                # 兼容多种字段名 (name/title, content/description)
+                kp_name = kp.get("name") or kp.get("title") or f"知识点{idx + 1}"
+                kp_desc = kp.get("description") or kp.get("content") or ""
+                
                 point = {
-                    "id": int(f"{abs(hash(str(payload.get('upload_id') or metadata_file.stem))) % 100000}{idx}"),
-                    "name": kp.get("title") or f"知识点{idx + 1}",
-                    "description": kp.get("content") or "",
+                    "id": int(f"{abs(hash(str(upload_id))) % 100000}{idx}"),
+                    "name": kp_name,
+                    "description": kp_desc,
                     "category": kp.get("category") or "通用",
                     "importance": int(kp.get("importance") or 3),
                     "confidence": float(kp.get("confidence") or 0.8),
                     "start_time": float(start_time),
                     "end_time": float(end_time),
                     "course_id": int(course_id) if course_id is not None else 0,
+                    "video_id": upload_id,
+                    "source_title": video_title,
                     "concepts": concepts,
                     "embedding": kp.get("embedding") if isinstance(kp.get("embedding"), list) else [],
                     "created_at": created_at,

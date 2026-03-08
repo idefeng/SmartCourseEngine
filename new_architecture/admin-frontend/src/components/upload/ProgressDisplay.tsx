@@ -76,6 +76,16 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
       }
     };
 
+    const handleVideoAnalysisCompleted = (message: any) => {
+      const { task_id } = message.data;
+      setAnalysisProgress(prev => ({
+        ...prev,
+        [task_id]: { progress: 100, message: '视频分析完成' },
+      }));
+      // 视频分析完毕后，可能还有知识提取，但通常标志着主要工作完成
+      // 这里不直接触发 loadTasks，因为 TASK_COMPLETED 才是最终完成
+    };
+
     const handleTaskFailed = (message: any) => {
       const { task_id, error } = message.data;
       setAnalysisProgress(prev => ({
@@ -85,11 +95,13 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
     };
 
     wsClient.on(MessageType.VIDEO_ANALYSIS_PROGRESS, handleVideoProgress);
+    wsClient.on(MessageType.VIDEO_ANALYSIS_COMPLETED, handleVideoAnalysisCompleted);
     wsClient.on(MessageType.TASK_COMPLETED, handleTaskCompleted);
     wsClient.on(MessageType.TASK_FAILED, handleTaskFailed);
 
     return () => {
       wsClient.off(MessageType.VIDEO_ANALYSIS_PROGRESS, handleVideoProgress);
+      wsClient.off(MessageType.VIDEO_ANALYSIS_COMPLETED, handleVideoAnalysisCompleted);
       wsClient.off(MessageType.TASK_COMPLETED, handleTaskCompleted);
       wsClient.off(MessageType.TASK_FAILED, handleTaskFailed);
     };
@@ -109,7 +121,22 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
     setTasks(allTasks);
 
     if (!taskId && allTasks.length > 0) {
-      setSelectedTask(allTasks[0]);
+      const activeTask = allTasks[0];
+      setSelectedTask(activeTask);
+
+      // 如果任务已经完成，确保触发回调，防止错过WebSocket消息
+      if (activeTask.status === UploadStatus.COMPLETED) {
+        if (onAnalysisCompleted) {
+          onAnalysisCompleted(activeTask.upload_id);
+        }
+      }
+    } else if (taskId) {
+      const task = allTasks.find(t => t.upload_id === taskId);
+      if (task?.status === UploadStatus.COMPLETED) {
+        if (onAnalysisCompleted) {
+          onAnalysisCompleted(task.upload_id);
+        }
+      }
     }
   };
 

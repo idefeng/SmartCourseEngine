@@ -38,6 +38,7 @@ import {
   ShareAltOutlined,
   FileSearchOutlined,
   StarOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
@@ -62,6 +63,8 @@ interface KnowledgePoint {
   embedding: number[]
   created_at: string
   updated_at: string
+  video_id?: string
+  source_title?: string
   course?: {
     id: number
     title: string
@@ -170,14 +173,19 @@ export default function KnowledgePage() {
       dataIndex: 'course',
       key: 'course',
       width: 140,
-      render: (course) => (
-        course ? (
+      render: (_, record) => (
+        record.course ? (
           <div className="flex items-center space-x-2 bg-slate-50 p-1 pr-2 rounded-lg border border-slate-100 inline-flex">
-            <Avatar size={20} src={course.thumbnail_url} icon={<BookOutlined />} className="rounded shadow-sm" />
-            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px]">{course.title}</span>
+            <Avatar size={20} src={record.course.thumbnail_url} icon={<BookOutlined />} className="rounded shadow-sm" />
+            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px]">{record.course.title}</span>
+          </div>
+        ) : record.source_title ? (
+          <div className="flex items-center space-x-2 bg-blue-50/50 p-1 pr-2 rounded-lg border border-blue-100/50 inline-flex">
+            <Avatar size={20} icon={<VideoCameraOutlined />} className="rounded shadow-sm bg-blue-100 text-blue-600" />
+            <span className="text-[10px] font-bold text-blue-700 truncate max-w-[80px]">{record.source_title}</span>
           </div>
         ) : (
-          <span className="text-[10px] text-slate-300 italic">未关联课程</span>
+          <span className="text-[10px] text-slate-300 italic">未关联</span>
         )
       ),
     },
@@ -287,10 +295,10 @@ export default function KnowledgePage() {
 
   return (
     <>
-      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
-        <div>
-          <Title level={3} className="!m-0 !font-bold">知识中枢</Title>
-          <Text type="secondary" className="text-xs">多模态知识提取与智能化拓扑构建</Text>
+      <Header className="flex-none z-10 !h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+        <div className="flex flex-col">
+          <Title level={3} className="!m-0 !font-bold text-slate-900">知识中枢</Title>
+          <Text type="secondary" className="text-xs font-medium opacity-60">多模态知识提取与智能化拓扑构建</Text>
         </div>
 
         <div className="flex items-center space-x-4">

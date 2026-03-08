@@ -229,10 +229,10 @@ export default function SearchPage() {
 
   return (
     <>
-      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
-        <div>
+      <Header className="flex-none z-10 !h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
+        <div className="flex flex-col">
           <Title level={3} className="!m-0 !font-bold text-slate-900">智能搜索</Title>
-          <Text type="secondary" className="text-xs">支持多种检索范式，快速定位核心教学资产与知识节点</Text>
+          <Text type="secondary" className="text-xs font-medium opacity-60">支持多种检索范式，快速定位核心教学资产与知识节点</Text>
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} />

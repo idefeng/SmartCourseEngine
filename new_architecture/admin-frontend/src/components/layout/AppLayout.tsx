@@ -18,7 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <Layout hasSider className="h-screen overflow-hidden bg-slate-50/50">
             <AppSidebar />
-            <Layout className="flex flex-col flex-1 h-screen overflow-hidden bg-transparent">
+            <Layout className="flex flex-col flex-1 h-full min-w-0 overflow-hidden bg-transparent relative">
                 {children}
             </Layout>
         </Layout>

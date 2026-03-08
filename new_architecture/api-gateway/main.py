@@ -308,14 +308,58 @@ async def list_courses(
 @app.post("/api/v1/courses", tags=["课程"])
 @handle_exceptions
 async def create_course(
+    payload: Dict[str, Any] = Body(...),
     authenticated: bool = Depends(verify_api_key)
 ):
     """创建课程"""
-    # 这里应该代理到course-generator服务
+    from services.course_service import course_service
+    course = course_service.create_course(payload)
     return BaseResponse(
         success=True,
-        message="创建课程请求已接收",
-        data={"job_id": "demo-job-id"}
+        message="课程创建成功",
+        data=course
+    )
+
+@app.put("/api/v1/courses/{course_id}", tags=["课程"])
+@handle_exceptions
+async def update_course(
+    course_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authenticated: bool = Depends(verify_api_key)
+):
+    """更新课程"""
+    from services.course_service import course_service
+    course = course_service.update_course(course_id, payload)
+    if not course:
+        return BaseResponse(
+            success=False,
+            message="课程不存在",
+            error_code="COURSE_NOT_FOUND"
+        )
+    return BaseResponse(
+        success=True,
+        message="课程更新成功",
+        data=course
+    )
+
+@app.delete("/api/v1/courses/{course_id}", tags=["课程"])
+@handle_exceptions
+async def delete_course(
+    course_id: int,
+    authenticated: bool = Depends(verify_api_key)
+):
+    """删除课程"""
+    from services.course_service import course_service
+    success = course_service.delete_course(course_id)
+    if not success:
+        return BaseResponse(
+            success=False,
+            message="课程未找到或删除失败",
+            error_code="COURSE_DELETE_ERROR"
+        )
+    return BaseResponse(
+        success=True,
+        message="课程删除成功"
     )
 
 @app.post("/api/v1/videos/analyze", tags=["视频分析"])
@@ -709,8 +753,49 @@ async def list_users(
         }
     )
 
+# ============================================================================
+# 数据分析端点 (Mock)
+# ============================================================================
+
+@app.get("/api/v1/analytics/overview", tags=["分析"])
+@handle_exceptions
+async def get_analytics_overview(authenticated: bool = Depends(verify_api_key)):
+    """获取数据分析概览"""
+    return BaseResponse(
+        success=True,
+        message="获取概览成功",
+        data={
+            "total_learning_hours": 2840,
+            "knowledge_coverage": 84,
+            "active_users": 1248,
+            "completion_rate": 68,
+            "trends": {
+                "hours": "+12.5%",
+                "coverage": "+4.2%",
+                "users": "-2.1%",
+                "completion": "+8.1%"
+            }
+        }
+    )
+
+@app.get("/api/v1/analytics/trends", tags=["分析"])
+@handle_exceptions
+async def get_learning_trends(authenticated: bool = Depends(verify_api_key)):
+    """获取学习趋势数据"""
+    return BaseResponse(
+        success=True,
+        message="获取趋势成功",
+        data={
+            "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            "datasets": [
+                {"label": "Learning Activity", "data": [40, 70, 45, 90, 65, 80, 50]},
+                {"label": "Knowledge Acquisition", "data": [20, 50, 30, 70, 40, 60, 30]}
+            ]
+        }
+    )
 
 # ============================================================================
+
 # GraphQL端点（预留）
 # ============================================================================
 

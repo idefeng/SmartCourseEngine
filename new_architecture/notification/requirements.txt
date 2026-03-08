@@ -1,0 +1,25 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+httpx==0.25.1
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+redis==5.0.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+aiofiles==23.2.1
+aiosmtplib==3.0.1
+
+# 邮件相关
+email-validator==2.1.0
+
+# 推送通知相关（可选）
+firebase-admin==6.2.0
+apns2==0.7.1
+
+# 短信服务相关（可选）
+twilio==8.9.0
+tencentcloud-sdk-python==3.0.1000

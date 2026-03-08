@@ -212,6 +212,11 @@ class Config(BaseSettings):
 config = Config()
 
 
+def get_settings():
+    """获取全局配置实例 (向后兼容)"""
+    return config
+
+
 def load_config_from_file(config_path: Optional[str] = None) -> Config:
     """
     从配置文件加载配置

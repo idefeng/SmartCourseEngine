@@ -15,7 +15,7 @@ import {
   InputNumber,
   DatePicker,
   Switch,
-  message,
+  App,
   Popconfirm,
   Tooltip,
   Badge,
@@ -71,6 +71,7 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [form] = Form.useForm()
   const queryClient = useQueryClient()
+  const { message } = App.useApp()
 
   // 获取课程列表
   const { data: coursesData, isLoading, refetch } = useQuery({
@@ -78,7 +79,7 @@ export default function CoursesPage() {
     queryFn: () => api.courses.getCourses({ search: searchText }),
   })
 
-  const courses = coursesData?.data?.items || []
+  const courses = (coursesData as any)?.courses || []
 
   // 创建/更新课程
   const mutation = useMutation({
@@ -315,7 +316,7 @@ export default function CoursesPage() {
             loading={isLoading}
             className="premium-table"
             pagination={{
-              total: coursesData?.data?.total || courses.length,
+              total: (coursesData as any)?.pagination?.total || courses.length,
               pageSize: 10,
               showSizeChanger: true,
               showTotal: (total) => <span className="text-slate-400 text-xs font-medium">总计发现 {total} 门专业课程</span>,

@@ -2,9 +2,10 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AntdRegistry } from '@ant-design/nextjs-registry'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, App } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { Providers } from '@/components/providers'
+import AppLayout from '@/components/layout/AppLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,34 +27,58 @@ export default function RootLayout({
             locale={zhCN}
             theme={{
               token: {
-                colorPrimary: '#3b82f6',
-                borderRadius: 6,
-                colorLink: '#3b82f6',
+                colorPrimary: '#6366f1', // Indigo-500
+                colorInfo: '#6366f1',
+                colorSuccess: '#10b981', // Emerald-500
+                colorWarning: '#f59e0b', // Amber-500
+                colorError: '#ef4444', // Red-500
+                borderRadius: 12,
+                colorLink: '#6366f1',
+                fontFamily: 'inherit',
               },
               components: {
                 Layout: {
-                  headerBg: '#ffffff',
+                  headerBg: 'rgba(255, 255, 255, 0.8)',
                   headerPadding: '0 24px',
                 },
                 Menu: {
-                  itemBorderRadius: 6,
-                  itemMarginBlock: 4,
-                  itemMarginInline: 4,
+                  itemBorderRadius: 10,
+                  itemMarginBlock: 6,
+                  itemMarginInline: 8,
+                  itemSelectedBg: 'rgba(99, 102, 241, 0.1)',
+                  itemSelectedColor: '#6366f1',
                 },
                 Button: {
-                  borderRadius: 6,
+                  borderRadius: 10,
+                  controlHeight: 38,
+                  fontWeight: 500,
                 },
                 Card: {
-                  borderRadiusLG: 8,
+                  borderRadiusLG: 16,
+                  boxShadowTertiary: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
                 },
                 Table: {
-                  borderRadius: 8,
+                  borderRadius: 16,
                 },
+                Input: {
+                  borderRadius: 10,
+                  controlHeight: 38,
+                },
+                Select: {
+                  borderRadius: 10,
+                  controlHeight: 38,
+                }
               },
             }}
           >
             <Providers>
-              {children}
+              <AppLayout>
+                <div className="page-transition">
+                  <App>
+                    {children}
+                  </App>
+                </div>
+              </AppLayout>
             </Providers>
           </ConfigProvider>
         </AntdRegistry>

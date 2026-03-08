@@ -402,52 +402,28 @@ class ChunkedUploadManager:
             raise
 
     async def _run_post_upload_pipeline(self, upload_id: str):
-        """上传后处理流程"""
+        """
+        上传后处理流程
+        注意：实时的分析和知识提取进度现在由 VideoAnalysisWorker 通过内部 API 推送到网关。
+        此方法现在仅用于初始化 WebSocket 任务追踪。
+        """
         upload = self.uploads.get(upload_id)
         if not upload:
             return
 
         try:
+            # 仅初始化任务追踪，不进行模拟更新
             websocket_service.create_video_analysis_task(
                 task_id=upload_id,
                 user_id=upload.user_id,
                 video_id=upload_id,
                 video_name=upload.file_name
             )
-
-            stages = [
-                (15, "文件校验完成"),
-                (35, "音频转写处理中"),
-                (60, "关键帧提取处理中"),
-                (80, "场景检测处理中"),
-                (95, "知识提取处理中"),
-            ]
-
-            for progress, stage_message in stages:
-                await websocket_service.update_video_analysis_progress(
-                    task_id=upload_id,
-                    progress=progress,
-                    stage="processing",
-                    message=stage_message
-                )
-                await asyncio.sleep(0.8)
-
-            upload.status = UploadStatus.COMPLETED
-            upload.updated_at = datetime.utcnow().isoformat()
-            self._save_upload_metadata(upload)
-
-            await websocket_service.complete_video_analysis(
-                task_id=upload_id,
-                result={
-                    "upload_id": upload.upload_id,
-                    "file_name": upload.file_name,
-                    "file_path": upload.file_path,
-                    "file_hash": upload.file_hash,
-                    "status": upload.status.value
-                }
-            )
+            
+            self.logger.info(f"已初始化 WebSocket 任务追踪: {upload_id}")
+            
         except Exception as e:
-            upload.status = UploadStatus.FAILED
+            self.logger.error(f"初始化 WebSoket 追踪失败 {upload_id}: {e}")
             upload.updated_at = datetime.utcnow().isoformat()
             self._save_upload_metadata(upload)
 

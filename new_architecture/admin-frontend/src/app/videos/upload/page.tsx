@@ -75,15 +75,8 @@ export default function VideoUploadPage() {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
-        background: '#fff', 
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-      }}>
+    <>
+      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <Space>
           <Button type="text" onClick={() => router.push('/videos')}>
             返回视频列表
@@ -94,7 +87,7 @@ export default function VideoUploadPage() {
         </Space>
       </Header>
 
-      <Content style={{ padding: '24px' }}>
+      <Content className="flex-1 overflow-y-auto" style={{ padding: '24px' }}>
         <Space direction="vertical" size={24} style={{ width: '100%' }}>
           {/* 步骤指示器 */}
           <Card>
@@ -326,7 +319,7 @@ export default function VideoUploadPage() {
           />
         </Space>
       </Content>
-    </Layout>
+    </>
   );
 }
 
@@ -343,6 +336,6 @@ const Statistic = ({ title, value, suffix, valueStyle }: any) => (
 
 const LineChartOutlined = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
   </svg>
 );

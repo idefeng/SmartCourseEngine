@@ -14,7 +14,7 @@ import {
   Select,
   Upload,
   Progress,
-  message,
+  App,
   Popconfirm,
   Tooltip,
   Badge,
@@ -87,6 +87,7 @@ export default function VideosPage() {
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [form] = Form.useForm()
   const queryClient = useQueryClient()
+  const { message } = App.useApp()
 
   // 获取视频列表
   const { data: videosData, isLoading, refetch } = useQuery({
@@ -548,7 +549,7 @@ export default function VideosPage() {
                 <span className="text-xs font-bold text-indigo-700 uppercase">正在上传...</span>
                 <span className="text-xs font-black text-indigo-700">{uploadProgress}%</span>
               </div>
-              <Progress percent={uploadProgress} showInfo={false} strokeColor="#6366f1" strokeWidth={8} />
+              <Progress percent={uploadProgress} showInfo={false} strokeColor="#6366f1" size={{ height: 8 }} />
             </div>
           )}
         </Form>

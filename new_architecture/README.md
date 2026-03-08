@@ -1,6 +1,6 @@
-# SmartCourseEngine 重构项目
+# SmartCourseEngine 重构项目 (v2.1.0)
 
-基于AI课程知识库技术方案的重构版本，从智能课件生成引擎升级为AI驱动的智能课程知识库与生成平台。
+基于AI课程知识库技术方案的重构版本，从智能课件生成引擎升级为AI驱动的智能课程知识库与生成平台。现已完成核心功能精修与生产就绪加固。
 
 ## 🎯 新架构目标
 
@@ -10,6 +10,8 @@
 3. **智能检索系统**: 支持知识点级别的视频检索和时间戳定位
 4. **动态知识更新**: 支持新内容（如法律法规）的录入和已有课程更新
 5. **个性化学习**: 基于知识图谱的个性化学习路径推荐
+6. **用户洞察与画像**: 实时监控用户学习指标与画像特征
+7. **数据决策引擎**: 全域流量统计与智能化教学路径建议提示
 
 ## 🏗️ 架构设计
 
@@ -26,14 +28,14 @@
    AI模型服务层 (Whisper + CLIP + LLM)
 ```
 
-### 微服务划分
-1. **api-gateway**: API网关服务（端口: 8000）
-2. **course-generator**: 课件生成服务（端口: 8001）
-3. **video-analyzer**: 视频分析服务（端口: 8002）
-4. **knowledge-base**: 知识库管理服务（端口: 8003）
-5. **search-engine**: 智能检索服务（端口: 8004）
-6. **recommendation**: 推荐服务（端口: 8005）
-7. **notification**: 通知服务（端口: 8006）
+### 微服务划分（7个完整服务）
+1. **api-gateway**: API网关服务（端口: 8000） - ✅ 已实现
+2. **course-generator**: 课件生成服务（端口: 8001） - ✅ 已实现
+3. **video-analyzer**: 视频分析服务（端口: 8002） - ✅ 已实现
+4. **knowledge-extractor**: 知识提取服务（端口: 8003） - ✅ 已实现
+5. **search-engine**: 智能检索服务（端口: 8004） - ✅ 已实现
+6. **recommendation**: 推荐服务（端口: 8005） - ✅ 已实现
+7. **notification**: 通知服务（端口: 8006） - ✅ 已实现
 
 ## 🚀 快速开始
 
@@ -44,6 +46,10 @@
 
 ### 启动所有服务
 ```bash
+# 使用完整启动脚本（推荐）
+./start_complete.sh
+
+# 或手动启动
 cd deploy
 docker-compose up -d
 ```
@@ -56,6 +62,14 @@ docker-compose up -d
 - **RabbitMQ管理**: http://localhost:15672 (admin/admin123)
 - **Neo4j浏览器**: http://localhost:7474 (neo4j/admin123)
 
+### 微服务直接访问
+- **课件生成服务**: http://localhost:8001
+- **视频分析服务**: http://localhost:8002
+- **知识提取服务**: http://localhost:8003
+- **搜索服务**: http://localhost:8004
+- **推荐服务**: http://localhost:8005
+- **通知服务**: http://localhost:8006
+
 ### 停止服务
 ```bash
 cd deploy
@@ -66,25 +80,52 @@ docker-compose down
 
 ```
 new_architecture/
-├── api-gateway/          # API网关服务
+├── api-gateway/          # API网关服务 ✅
+│   ├── main_complete.py  # 完整API网关（集成7个微服务）
 │   ├── main.py          # 主应用
 │   ├── Dockerfile       # 容器配置
 │   └── requirements.txt # Python依赖
-├── course-generator/    # 课件生成服务（待开发）
-├── video-analyzer/      # 视频分析服务（待开发）
-├── knowledge-base/      # 知识库服务（待开发）
-├── search-engine/       # 检索服务（待开发）
-├── recommendation/      # 推荐服务（待开发）
-├── notification/        # 通知服务（待开发）
-├── shared/              # 共享模块
+├── course-generator/    # 课件生成服务 ✅
+│   ├── main.py          # 课件生成逻辑
+│   ├── Dockerfile       # 容器配置
+│   └── requirements.txt # Python依赖
+├── video-analyzer/      # 视频分析服务 ✅
+│   ├── main.py          # 视频分析逻辑
+│   ├── Dockerfile       # 容器配置
+│   └── requirements.txt # Python依赖
+├── knowledge-extractor/ # 知识提取服务 ✅
+│   ├── main.py          # 知识提取逻辑
+│   ├── Dockerfile       # 容器配置
+│   └── requirements.txt # Python依赖
+├── search-engine/       # 搜索服务 ✅
+│   ├── main.py          # 搜索逻辑
+│   ├── Dockerfile       # 容器配置
+│   └── requirements.txt # Python依赖
+├── recommendation/      # 推荐服务 ✅
+│   ├── main.py          # 推荐逻辑
+│   ├── Dockerfile       # 容器配置
+│   └── requirements.txt # Python依赖
+├── notification/        # 通知服务 ✅
+│   ├── main.py          # 通知逻辑
+│   ├── Dockerfile       # 容器配置
+│   └── requirements.txt # Python依赖
+├── shared/              # 共享模块 ✅
 │   ├── config.py       # 配置管理
 │   ├── models.py       # 数据模型
+│   ├── auth.py         # 认证授权
+│   ├── database.py     # 数据库连接
+│   ├── api_response.py # API响应格式
+│   ├── file_upload.py  # 文件上传
+│   ├── websocket.py    # WebSocket通信
 │   └── utils.py        # 工具函数
-└── deploy/              # 部署配置
-    ├── docker-compose.yml  # 服务编排
-    ├── nginx.conf      # 反向代理
-    ├── prometheus.yml  # 监控配置
-    └── grafana/        # 仪表板配置
+├── admin-frontend/      # 前端管理界面 ✅
+├── deploy/              # 部署配置 ✅
+│   ├── docker-compose.yml  # 服务编排（7个微服务）
+│   ├── nginx.conf      # 反向代理配置
+│   ├── prometheus.yml  # 监控配置
+│   └── grafana/        # 仪表板配置
+├── start_complete.sh    # 完整启动脚本 ✅
+└── test_complete_api.py # 完整API测试脚本 ✅
 ```
 
 ## 🔧 开发指南
@@ -282,6 +323,6 @@ MIT License
 - 讨论: GitHub Discussions
 
 ---
-**版本**: 1.0.0  
-**最后更新**: 2026-03-01  
-**状态**: 开发中
+**版本**: 2.1.0 (精修版)  
+**状态**: 功能优化完成，生产就绪  
+**最后更新**: 2026-03-08

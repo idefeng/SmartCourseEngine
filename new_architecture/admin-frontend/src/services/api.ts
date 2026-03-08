@@ -16,7 +16,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     if (config.data instanceof FormData && config.headers) {
-      ;(config.headers as any)['Content-Type'] = undefined
+      ; (config.headers as any)['Content-Type'] = undefined
     }
 
     // 可以在这里添加认证token
@@ -24,10 +24,10 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
+
     // 添加请求时间戳
     config.headers['X-Request-Timestamp'] = new Date().toISOString()
-    
+
     return config
   },
   (error) => {
@@ -40,16 +40,16 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // 统一处理API响应格式
     const data = response.data
-    
+
     if (data.success === false) {
       // 如果API返回错误，抛出异常
       const error = new Error(data.message || '请求失败')
-      ;(error as any).response = response
-      ;(error as any).code = data.error_code
-      ;(error as any).details = data.details
+        ; (error as any).response = response
+        ; (error as any).code = data.error_code
+        ; (error as any).details = data.details
       return Promise.reject(error)
     }
-    
+
     // 返回数据部分
     return data.data
   },
@@ -57,14 +57,14 @@ apiClient.interceptors.response.use(
     // 统一错误处理
     if (error.response) {
       const { status, data } = error.response
-      
+
       // 处理统一API响应格式的错误
       if (data && data.success === false) {
         const apiError = new Error(data.message || 'API请求失败')
-        ;(apiError as any).code = data.error_code
-        ;(apiError as any).details = data.details
-        ;(apiError as any).timestamp = data.timestamp
-        
+          ; (apiError as any).code = data.error_code
+          ; (apiError as any).details = data.details
+          ; (apiError as any).timestamp = data.timestamp
+
         // 根据错误代码进行特殊处理
         switch (data.error_code) {
           case '0004': // 权限不足
@@ -79,10 +79,10 @@ apiClient.interceptors.response.use(
             console.error('参数验证失败:', data.details?.errors)
             break
         }
-        
+
         return Promise.reject(apiError)
       }
-      
+
       // 处理HTTP状态码错误
       switch (status) {
         case 401:
@@ -111,7 +111,7 @@ apiClient.interceptors.response.use(
     } else {
       console.error('请求配置错误:', error.message)
     }
-    
+
     return Promise.reject(error)
   }
 )
@@ -121,25 +121,25 @@ export const api = {
   // 认证相关
   auth: {
     // 登录
-    login: (credentials: any) => 
+    login: (credentials: any) =>
       apiClient.post('/api/v1/auth/login', credentials),
-    
+
     // 注册
-    register: (data: any) => 
+    register: (data: any) =>
       apiClient.post('/api/v1/auth/register', data),
-    
+
     // 获取当前用户
-    getCurrentUser: () => 
+    getCurrentUser: () =>
       apiClient.get('/api/v1/auth/me'),
-      
+
     // 刷新token
     refreshToken: (token: string) =>
       apiClient.post('/api/v1/auth/refresh', { refresh_token: token }),
-      
+
     // 登出
-    logout: () => 
+    logout: () =>
       apiClient.post('/api/v1/auth/logout'),
-      
+
     // 修改密码
     changePassword: (data: any) =>
       apiClient.post('/api/v1/auth/change-password', data),
@@ -148,29 +148,29 @@ export const api = {
   // 课程相关
   courses: {
     // 获取课程列表
-    getCourses: (params?: any) => 
+    getCourses: (params?: any) =>
       apiClient.get('/api/v1/courses', { params }),
-    
+
     // 获取课程详情
-    getCourse: (id: number | string) => 
+    getCourse: (id: number | string) =>
       apiClient.get(`/api/v1/courses/${id}`),
-    
+
     // 创建课程
-    createCourse: (data: any) => 
+    createCourse: (data: any) =>
       apiClient.post('/api/v1/courses', data),
-    
+
     // 更新课程
-    updateCourse: (id: number | string, data: any) => 
+    updateCourse: (id: number | string, data: any) =>
       apiClient.put(`/api/v1/courses/${id}`, data),
-    
+
     // 删除课程
-    deleteCourse: (id: number | string) => 
+    deleteCourse: (id: number | string) =>
       apiClient.delete(`/api/v1/courses/${id}`),
-    
+
     // 搜索课程
-    searchCourses: (query: string, params?: any) => 
-      apiClient.get('/api/v1/courses/search', { 
-        params: { query, ...params } 
+    searchCourses: (query: string, params?: any) =>
+      apiClient.get('/api/v1/courses/search', {
+        params: { query, ...params }
       }),
   },
 
@@ -183,7 +183,7 @@ export const api = {
           'Content-Type': 'multipart/form-data',
         },
       }
-      
+
       if (onProgress) {
         config.onUploadProgress = (progressEvent) => {
           const percentCompleted = Math.round(
@@ -192,119 +192,134 @@ export const api = {
           onProgress(percentCompleted)
         }
       }
-      
+
       return apiClient.post('/api/v1/videos/upload', formData, config)
     },
-    
+
     // 分析视频
-    analyzeVideo: (videoId: string, options?: any) => 
+    analyzeVideo: (videoId: string, options?: any) =>
       apiClient.post(`/api/v1/videos/${videoId}/analyze`, options),
-    
+
     // 获取视频列表
-    getVideos: (params?: any) => 
+    getVideos: (params?: any) =>
       apiClient.get('/api/v1/videos', { params }),
-    
+
     // 获取视频详情
-    getVideo: (id: string) => 
+    getVideo: (id: string) =>
       apiClient.get(`/api/v1/videos/${id}`),
-    
+
     // 删除视频
-    deleteVideo: (id: string) => 
+    deleteVideo: (id: string) =>
       apiClient.delete(`/api/v1/videos/${id}`),
   },
 
   // 知识点相关
   knowledge: {
     // 提取知识点
-    extractKnowledge: (transcript: any, courseId?: number) => 
+    extractKnowledge: (transcript: any, courseId?: number) =>
       apiClient.post('/api/v1/knowledge/extract', { transcript, course_id: courseId }),
-    
+
     // 构建知识图谱
-    buildKnowledgeGraph: (knowledgePoints: any[]) => 
+    buildKnowledgeGraph: (knowledgePoints: any[]) =>
       apiClient.post('/api/v1/knowledge/graph', { knowledge_points: knowledgePoints }),
-    
+
     // 处理视频分析
-    processVideoAnalysis: (videoAnalysis: any, courseId?: number) => 
+    processVideoAnalysis: (videoAnalysis: any, courseId?: number) =>
       apiClient.post('/api/v1/knowledge/process', { video_analysis: videoAnalysis, course_id: courseId }),
-    
+
     // 获取知识点列表
-    getKnowledgePoints: (params?: any) => 
+    getKnowledgePoints: (params?: any) =>
       apiClient.get('/api/v1/knowledge/points', { params }),
-    
+
     // 搜索知识点
-    searchKnowledge: (query: string, params?: any) => 
+    searchKnowledge: (query: string, params?: any) =>
       apiClient.get('/api/v1/knowledge/search', { params: { query, ...params } }),
   },
 
   // 搜索相关
   search: {
     // 通用搜索
-    search: (query: string, searchType: string = 'hybrid', limit: number = 10) => 
-      apiClient.get('/api/v1/search', { 
-        params: { query, search_type: searchType, limit } 
+    search: (query: string, searchType: string = 'hybrid', limit: number = 10) =>
+      apiClient.get('/api/v1/search', {
+        params: { query, search_type: searchType, limit }
       }),
-    
+
     // 知识点搜索
-    searchKnowledge: (query: string, params?: any) => 
-      apiClient.get('/api/v1/search/knowledge', { 
-        params: { query, ...params } 
+    searchKnowledge: (query: string, params?: any) =>
+      apiClient.get('/api/v1/search/knowledge', {
+        params: { query, ...params }
       }),
-    
+
     // 课程搜索
-    searchCourses: (query: string, params?: any) => 
-      apiClient.get('/api/v1/search/courses', { 
-        params: { query, ...params } 
+    searchCourses: (query: string, params?: any) =>
+      apiClient.get('/api/v1/search/courses', {
+        params: { query, ...params }
       }),
-    
+
     // 语义搜索
-    semanticSearch: (query: string, limit: number = 10) => 
-      apiClient.get('/api/v1/search/semantic', { 
-        params: { query, limit } 
+    semanticSearch: (query: string, limit: number = 10) =>
+      apiClient.get('/api/v1/search/semantic', {
+        params: { query, limit }
       }),
-    
+
     // 混合搜索
-    hybridSearch: (query: string, weights?: any, limit: number = 10) => 
-      apiClient.get('/api/v1/search/hybrid', { 
-        params: { query, weights: JSON.stringify(weights), limit } 
+    hybridSearch: (query: string, weights?: any, limit: number = 10) =>
+      apiClient.get('/api/v1/search/hybrid', {
+        params: { query, weights: JSON.stringify(weights), limit }
       }),
   },
 
   // 用户相关
   users: {
     // 获取用户列表
-    getUsers: (params?: any) => 
+    getUsers: (params?: any) =>
       apiClient.get('/api/v1/users', { params }),
-    
+
     // 获取用户详情
-    getUser: (id: number | string) => 
+    getUser: (id: number | string) =>
       apiClient.get(`/api/v1/users/${id}`),
-    
+
     // 创建用户
-    createUser: (data: any) => 
+    createUser: (data: any) =>
       apiClient.post('/api/v1/users', data),
-    
+
     // 更新用户
-    updateUser: (id: number | string, data: any) => 
+    updateUser: (id: number | string, data: any) =>
       apiClient.put(`/api/v1/users/${id}`, data),
-    
+
     // 删除用户
-    deleteUser: (id: number | string) => 
+    deleteUser: (id: number | string) =>
       apiClient.delete(`/api/v1/users/${id}`),
   },
 
   // 系统相关
   system: {
     // 健康检查
-    health: () => 
+    health: () =>
       apiClient.get('/health'),
-    
+
     // 系统状态
-    status: () => 
+    status: () =>
       apiClient.get('/api/v1/system/status'),
-    
+
     // 统计信息
-    stats: () => 
+    stats: () =>
       apiClient.get('/api/v1/system/stats'),
+  },
+
+  // 数据分析相关
+  analytics: {
+    // 获取概览数据
+    getOverview: () =>
+      apiClient.get('/api/v1/analytics/overview'),
+
+    // 获取课程分析数据
+    getCourseAnalytics: () =>
+      apiClient.get('/api/v1/analytics/courses'),
+
+    // 获取学习趋势
+    getLearningTrends: (params?: any) =>
+      apiClient.get('/api/v1/analytics/trends', { params }),
   },
 }
 

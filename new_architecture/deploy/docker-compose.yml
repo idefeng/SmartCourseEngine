@@ -116,9 +116,12 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - api-gateway
+      - course-generator
       - video-analyzer
       - knowledge-extractor
       - search-engine
+      - recommendation
+      - notification
 
   # 微服务
   api-gateway:
@@ -141,6 +144,26 @@ services:
       redis:
         condition: service_healthy
       neo4j:
+        condition: service_healthy
+
+  course-generator:
+    build:
+      context: ..
+      dockerfile: course-generator/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - SERVICE_NAME=course-generator
+      - SERVICE_PORT=8001
+      - DEBUG=true
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/smartcourse
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - generated_courses_data:/app/generated_courses
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   video-analyzer:
@@ -190,6 +213,10 @@ services:
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - VIDEO_ANALYZER_URL=http://video-analyzer:8002
       - KNOWLEDGE_EXTRACTOR_URL=http://knowledge-extractor:8003
+      - NOTIFICATION_SERVICE_URL=http://notification:8006
+      - COURSE_GENERATOR_URL=http://course-generator:8001
+      - GATEWAY_INTERNAL_URL=http://api-gateway:8000
+      - AUTO_GENERATE_COURSE=true
       - ENABLE_KNOWLEDGE_PIPELINE=true
       - UPLOAD_DIR=/app/uploads
       - WORKER_METRICS_PORT=9108
@@ -204,6 +231,10 @@ services:
         condition: service_healthy
       video-analyzer:
         condition: service_healthy
+      notification:
+        condition: service_started
+      course-generator:
+        condition: service_started
 
   knowledge-extractor:
     build:
@@ -251,6 +282,51 @@ services:
       neo4j:
         condition: service_healthy
 
+  recommendation:
+    build:
+      context: ..
+      dockerfile: recommendation/Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - SERVICE_NAME=recommendation
+      - SERVICE_PORT=8005
+      - DEBUG=true
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/smartcourse
+      - REDIS_URL=redis://redis:6379/0
+      - NEO4J_URL=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=admin123
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  notification:
+    build:
+      context: ..
+      dockerfile: notification/Dockerfile
+    ports:
+      - "8006:8006"
+    environment:
+      - SERVICE_NAME=notification
+      - SERVICE_PORT=8006
+      - DEBUG=true
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/smartcourse
+      - REDIS_URL=redis://redis:6379/0
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   neo4j_data:
@@ -262,3 +338,4 @@ volumes:
   grafana_data:
   video_data:
   uploads_data:
+  generated_courses_data:

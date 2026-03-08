@@ -30,6 +30,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 # 添加共享模块路径
@@ -99,6 +100,11 @@ app = FastAPI(
     redoc_url=None,
     openapi_url="/openapi.json"
 )
+
+# 挂载上传文件目录，供前端直接访问
+import os
+os.makedirs("/app/uploads", exist_ok=True)
+app.mount("/app/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
 
 if AUTH_ENABLED and auth_router:
     app.include_router(auth_router)
@@ -286,13 +292,15 @@ async def list_courses(
             search=search
         )
         
-        return BaseResponse.success(
+        return BaseResponse(
+            success=True,
             message="获取课程列表成功",
             data=result
         )
     except Exception as e:
         logger.error(f"列出课程失败: {e}")
-        return BaseResponse.error(
+        return BaseResponse(
+            success=False,
             message="获取课程列表失败",
             error_code="COURSE_LIST_ERROR"
         )
@@ -582,6 +590,94 @@ async def list_knowledge_points(
 # graphql_app = GraphQLRouter(schema)
 # 
 # app.include_router(graphql_app, prefix="/graphql")
+
+# ============================================================================
+# 内部实时通信API (供内部微服务调用)
+# ============================================================================
+
+@app.post("/api/v1/internal/ws/broadcast", tags=["内部服务"])
+async def internal_ws_broadcast(
+    payload: Dict[str, Any] = Body(...)
+):
+    """
+    内部广播接口：允许微服务通过网关向WebSocket客户端推送消息
+    """
+    if not WEBSOCKET_ENABLED or not websocket_router:
+        return error_response(ErrorCode.SERVICE_UNAVAILABLE, "WebSocket服务未启用")
+        
+    try:
+        from shared.websocket import websocket_service, MessageType
+        
+        target_user_id = payload.get("user_id")
+        message_type_str = payload.get("type")
+        data = payload.get("data", {})
+        
+        try:
+            message_type = MessageType(message_type_str)
+        except ValueError:
+            return error_response(ErrorCode.VALIDATION_ERROR, f"无效的消息类型: {message_type_str}")
+            
+        if target_user_id:
+            await websocket_service.connection_manager.send_to_user(
+                int(target_user_id),
+                message_type,
+                data
+            )
+            logger.info(f"内部推送消息到用户 {target_user_id}: {message_type}")
+        else:
+            await websocket_service.connection_manager.broadcast(
+                message_type,
+                data
+            )
+            logger.info(f"内部广播消息: {message_type}")
+            
+        return success_response(message="已推送到WebSocket")
+    except Exception as e:
+        logger.error(f"内部实时通信推送失败: {e}")
+        return error_response(ErrorCode.UNKNOWN_ERROR, str(e))
+
+@app.post("/api/v1/internal/ws/task-progress", tags=["内部服务"])
+async def internal_ws_task_progress(
+    task_id: str = Body(...),
+    user_id: int = Body(...),
+    progress: int = Body(...),
+    stage: str = Body(...),
+    message: str = Body(None),
+    metadata: Dict[str, Any] = Body(None)
+):
+    """
+    内部进度更新接口：供Worker更新处理进度
+    """
+    if not WEBSOCKET_ENABLED or not websocket_router:
+        return error_response(ErrorCode.SERVICE_UNAVAILABLE, "WebSocket服务未启用")
+        
+    try:
+        from shared.websocket import websocket_service
+        
+        # 确保任务已在跟踪器中
+        if not websocket_service.task_tracker.get_task(task_id):
+            websocket_service.task_tracker.create_task(
+                task_id=task_id,
+                task_type="video_analysis",
+                user_id=user_id,
+                metadata=metadata or {}
+            )
+            
+        await websocket_service.update_video_analysis_progress(
+            task_id=task_id,
+            progress=progress,
+            stage=stage,
+            message=message
+        )
+        
+        # 如果是100%或完成状态，标记为完成
+        if progress >= 100 or stage in ["completed", "success"]:
+            await websocket_service.complete_task(task_id, result=metadata)
+            
+        return success_response(message="进度已更新")
+    except Exception as e:
+        logger.error(f"内部进度更新失败: {e}")
+        return error_response(ErrorCode.UNKNOWN_ERROR, str(e))
 
 # ============================================================================
 # 主函数

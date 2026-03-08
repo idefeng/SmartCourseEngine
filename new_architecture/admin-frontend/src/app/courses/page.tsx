@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  Layout, 
-  Card, 
-  Table, 
-  Button, 
-  Space, 
-  Input, 
-  Tag, 
-  Modal, 
-  Form, 
-  Select, 
+import {
+  Layout,
+  Card,
+  Table,
+  Button,
+  Space,
+  Input,
+  Tag,
+  Modal,
+  Form,
+  Select,
   InputNumber,
   DatePicker,
   Switch,
@@ -20,11 +20,12 @@ import {
   Tooltip,
   Badge,
   Avatar,
+  Typography,
 } from 'antd'
-import { 
-  PlusOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
   EyeOutlined,
   SearchOutlined,
   FilterOutlined,
@@ -39,6 +40,7 @@ import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
 const { Header, Content } = Layout
+const { Title, Text } = Typography // Destructured Title and Text
 const { Search } = Input
 const { Option } = Select
 
@@ -80,8 +82,8 @@ export default function CoursesPage() {
 
   // 创建/更新课程
   const mutation = useMutation({
-    mutationFn: (data: any) => 
-      editingCourse 
+    mutationFn: (data: any) =>
+      editingCourse
         ? api.courses.updateCourse(editingCourse.id, data)
         : api.courses.createCourse(data),
     onSuccess: () => {
@@ -146,196 +148,196 @@ export default function CoursesPage() {
       title: '课程封面',
       dataIndex: 'thumbnail_url',
       key: 'thumbnail',
-      width: 80,
+      width: 100,
       render: (url) => (
-        <Avatar 
-          shape="square" 
-          size="large" 
-          src={url || '/default-course.png'}
-          icon={<BookOutlined />}
-        />
+        <div className="p-1 rounded-xl bg-slate-100/50 inline-block shadow-sm">
+          <Avatar
+            shape="square"
+            size={64}
+            src={url || '/default-course.png'}
+            icon={<BookOutlined />}
+            className="rounded-lg border border-white"
+          />
+        </div>
       ),
     },
     {
-      title: '课程标题',
+      title: '课程信息',
       dataIndex: 'title',
       key: 'title',
       render: (text, record) => (
-        <div>
-          <div style={{ fontWeight: 500 }}>{text}</div>
-          <div style={{ fontSize: 12, color: '#666' }}>
-            {record.description?.substring(0, 50)}...
+        <div className="max-w-md">
+          <div className="font-bold text-slate-800 text-base mb-1 line-clamp-1">{text}</div>
+          <div className="text-xs text-slate-500 line-clamp-2">
+            {record.description || '暂无描述信息'}
           </div>
         </div>
       ),
     },
     {
-      title: '作者',
+      title: '教研作者',
       dataIndex: 'author',
       key: 'author',
+      width: 150,
       render: (author) => (
-        <Space>
-          <Avatar size="small" src={author?.avatar_url} icon={<UserOutlined />} />
-          <span>{author?.name}</span>
-        </Space>
+        <div className="flex items-center space-x-2 bg-slate-50/50 p-1.5 pr-3 rounded-full border border-slate-100 inline-flex">
+          <Avatar size={24} src={author?.avatar_url} icon={<UserOutlined />} className="shadow-sm" />
+          <span className="text-xs font-bold text-slate-700">{author?.name || '资深讲师'}</span>
+        </div>
       ),
     },
     {
-      title: '标签',
+      title: '核心标签',
       dataIndex: 'tags',
       key: 'tags',
       render: (tags) => (
-        <Space size={[0, 4]} wrap>
+        <div className="flex flex-wrap gap-1.5">
           {tags?.slice(0, 3).map((tag: string) => (
-            <Tag key={tag} color="blue">{tag}</Tag>
+            <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-500 uppercase tracking-wider">
+              {tag}
+            </span>
           ))}
           {tags && tags.length > 3 && (
-            <Tag>+{tags.length - 3}</Tag>
+            <span className="text-[10px] text-slate-400 font-bold">+{tags.length - 3}</span>
           )}
-        </Space>
+        </div>
       ),
     },
     {
-      title: '状态',
+      title: '发布状态',
       dataIndex: 'is_published',
       key: 'status',
-      width: 100,
+      width: 120,
       render: (published) => (
-        <Badge 
-          status={published ? 'success' : 'default'} 
-          text={published ? '已发布' : '草稿'} 
-        />
+        <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest ${published ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+          <Badge status={published ? 'success' : 'default'} className="mr-2" />
+          {published ? 'Published' : 'Draft'}
+        </div>
       ),
     },
     {
-      title: '统计',
+      title: '资源概览',
       key: 'stats',
-      width: 120,
+      width: 160,
       render: (_, record) => (
-        <Space>
-          <Tooltip title="知识点数量">
-            <Tag icon={<BookOutlined />} color="green">
-              {record.knowledge_points_count || 0}
-            </Tag>
+        <div className="flex items-center space-x-4">
+          <Tooltip title="关联知识点">
+            <div className="flex items-center space-x-1.5">
+              <BookOutlined className="text-violet-400" />
+              <span className="font-black text-sm text-slate-700">{record.knowledge_points_count || 0}</span>
+            </div>
           </Tooltip>
-          <Tooltip title="视频数量">
-            <Tag icon={<VideoCameraOutlined />} color="blue">
-              {record.videos_count || 0}
-            </Tag>
+          <div className="w-[1px] h-4 bg-slate-200"></div>
+          <Tooltip title="关联视频课">
+            <div className="flex items-center space-x-1.5">
+              <VideoCameraOutlined className="text-indigo-400" />
+              <span className="font-black text-sm text-slate-700">{record.videos_count || 0}</span>
+            </div>
           </Tooltip>
-        </Space>
+        </div>
       ),
     },
     {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      title: '最后修改',
+      dataIndex: 'updated_at',
+      key: 'updated_at',
       width: 120,
-      render: (date) => dayjs(date).format('YYYY-MM-DD'),
+      render: (date) => <span className="text-xs text-slate-400 font-medium">{dayjs(date).format('YYYY-MM-DD')}</span>,
     },
     {
       title: '操作',
       key: 'action',
-      width: 150,
+      width: 140,
       render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="查看详情">
-            <Button 
-              type="text" 
-              icon={<EyeOutlined />} 
-              onClick={() => window.open(`/courses/${record.id}`, '_blank')}
-            />
-          </Tooltip>
-          <Tooltip title="编辑">
-            <Button 
-              type="text" 
-              icon={<EditOutlined />} 
+        <div className="flex items-center space-x-1">
+          <Tooltip title="编辑课程">
+            <Button
+              type="text"
+              icon={<EditOutlined className="text-slate-400 hover:text-indigo-500" />}
               onClick={() => handleEdit(record)}
             />
           </Tooltip>
+          <Tooltip title="查看成果">
+            <Button
+              type="text"
+              icon={<EyeOutlined className="text-slate-400 hover:text-emerald-500" />}
+              onClick={() => window.open(`/courses/${record.id}`, '_blank')}
+            />
+          </Tooltip>
           <Popconfirm
-            title="确定要删除这个课程吗？"
-            description="删除后无法恢复，课程相关的视频和知识点也会被删除。"
+            title="确认删除课程"
+            description="关联的教学资产将同步失效，请谨慎操作。"
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"
+            okButtonProps={{ danger: true }}
           >
-            <Tooltip title="删除">
-              <Button 
-                type="text" 
-                danger 
-                icon={<DeleteOutlined />} 
+            <Tooltip title="彻底移除">
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined className="opacity-50 hover:opacity-100" />}
               />
             </Tooltip>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ]
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
-        background: '#fff', 
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-      }}>
+    <>
+      <Header className="sticky top-0 z-40 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div>
-          <h2 style={{ margin: 0 }}>课程管理</h2>
-          <p style={{ margin: 0, color: '#666', fontSize: 14 }}>
-            管理所有课程内容，包括创建、编辑、发布和删除课程
-          </p>
+          <Title level={3} className="!m-0 !font-bold text-slate-900">课程资产管理</Title>
+          <Text type="secondary" className="text-xs">构建结构化知识体系，赋能智能化教学体验</Text>
         </div>
-        <Space>
+        <Space size="middle">
           <Search
-            placeholder="搜索课程标题或描述"
+            placeholder="搜索课程资源..."
             allowClear
-            enterButton={<SearchOutlined />}
             onSearch={handleSearch}
-            style={{ width: 300 }}
+            className="w-72"
           />
-          <Button icon={<FilterOutlined />}>筛选</Button>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-            刷新
-          </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} />
+          <Button type="primary" size="large" icon={<PlusOutlined />} onClick={handleAdd} className="shadow-lg shadow-indigo-100">
             新建课程
           </Button>
         </Space>
       </Header>
-      <Content style={{ margin: '24px' }}>
-        <Card>
+
+      <Content className="p-10">
+        <Card className="border-none shadow-sm overflow-hidden">
           <Table
             columns={columns}
             dataSource={courses}
             rowKey="id"
             loading={isLoading}
+            className="premium-table"
             pagination={{
-              total: coursesData?.data?.total || 0,
+              total: coursesData?.data?.total || courses.length,
               pageSize: 10,
               showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total) => `共 ${total} 条记录`,
+              showTotal: (total) => <span className="text-slate-400 text-xs font-medium">总计发现 {total} 门专业课程</span>,
             }}
           />
         </Card>
       </Content>
 
-      {/* 课程编辑/创建模态框 */}
       <Modal
-        title={editingCourse ? '编辑课程' : '新建课程'}
+        title={<div className="text-lg font-black pb-4 border-b">配置课程资产</div>}
         open={isModalOpen}
         onCancel={handleCancel}
         onOk={handleSubmit}
         confirmLoading={mutation.isPending}
         width={600}
+        centered
+        className="premium-modal"
       >
         <Form
           form={form}
           layout="vertical"
+          className="pt-6"
           initialValues={{
             language: 'zh-CN',
             level: 'beginner',
@@ -344,87 +346,73 @@ export default function CoursesPage() {
         >
           <Form.Item
             name="title"
-            label="课程标题"
+            label={<span className="font-bold text-slate-700">课程标题</span>}
             rules={[{ required: true, message: '请输入课程标题' }]}
           >
-            <Input placeholder="请输入课程标题" />
+            <Input placeholder="输入精准且具有吸引力的标题" />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="课程描述"
+            label={<span className="font-bold text-slate-700">教学大纲/简介</span>}
             rules={[{ required: true, message: '请输入课程描述' }]}
           >
-            <Input.TextArea 
-              placeholder="请输入课程描述" 
-              rows={4}
-            />
+            <Input.TextArea placeholder="详细描述本课程的教学目标与核心价值" rows={4} />
           </Form.Item>
 
-          <Form.Item
-            name="thumbnail_url"
-            label="封面图片URL"
-          >
-            <Input placeholder="请输入封面图片URL" />
-          </Form.Item>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="language"
+              label={<span className="font-bold text-slate-700">教学语言</span>}
+              rules={[{ required: true, message: '请选择语言' }]}
+            >
+              <Select placeholder="选择主要语言">
+                <Option value="zh-CN">简体中文</Option>
+                <Option value="en-US">English</Option>
+                <Option value="ja-JP">日本語</Option>
+                <Option value="ko-KR">한국어</Option>
+              </Select>
+            </Form.Item>
 
-          <Form.Item
-            name="language"
-            label="语言"
-            rules={[{ required: true, message: '请选择语言' }]}
-          >
-            <Select placeholder="请选择语言">
-              <Option value="zh-CN">中文</Option>
-              <Option value="en-US">英文</Option>
-              <Option value="ja-JP">日文</Option>
-              <Option value="ko-KR">韩文</Option>
-            </Select>
-          </Form.Item>
+            <Form.Item
+              name="level"
+              label={<span className="font-bold text-slate-700">难度评级</span>}
+              rules={[{ required: true, message: '请选择难度等级' }]}
+            >
+              <Select placeholder="设定准入门槛">
+                <Option value="beginner">初级 (Beginner)</Option>
+                <Option value="intermediate">中级 (Intermediate)</Option>
+                <Option value="advanced">高级 (Advanced)</Option>
+                <Option value="expert">专家 (Expert)</Option>
+              </Select>
+            </Form.Item>
+          </div>
 
-          <Form.Item
-            name="level"
-            label="难度等级"
-            rules={[{ required: true, message: '请选择难度等级' }]}
-          >
-            <Select placeholder="请选择难度等级">
-              <Option value="beginner">初级</Option>
-              <Option value="intermediate">中级</Option>
-              <Option value="advanced">高级</Option>
-              <Option value="expert">专家</Option>
-            </Select>
-          </Form.Item>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="duration"
+              label={<span className="font-bold text-slate-700">预计时长 (Min)</span>}
+            >
+              <InputNumber min={0} className="w-full" placeholder="评估总学习时长" />
+            </Form.Item>
 
-          <Form.Item
-            name="duration"
-            label="预计学习时长（分钟）"
-          >
-            <InputNumber 
-              min={0} 
-              style={{ width: '100%' }} 
-              placeholder="请输入预计学习时长"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="tags"
-            label="标签"
-          >
-            <Select
-              mode="tags"
-              placeholder="请输入标签，按回车添加"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
+            <Form.Item
+              name="tags"
+              label={<span className="font-bold text-slate-700">检索关键词</span>}
+            >
+              <Select mode="tags" placeholder="输入后按回车" className="w-full" />
+            </Form.Item>
+          </div>
 
           <Form.Item
             name="is_published"
-            label="发布状态"
+            label={<span className="font-bold text-slate-700">发布决策</span>}
             valuePropName="checked"
           >
-            <Switch checkedChildren="已发布" unCheckedChildren="草稿" />
+            <Switch checkedChildren="正式发布" unCheckedChildren="暂存草稿" className="!bg-emerald-500" />
           </Form.Item>
         </Form>
       </Modal>
-    </Layout>
+    </>
   )
 }

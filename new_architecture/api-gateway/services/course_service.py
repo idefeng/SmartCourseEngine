@@ -34,6 +34,55 @@ class CourseService:
         """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+        
+    def _init_db(self):
+        """初始化数据库表"""
+        conn = self.get_connection()
+        try:
+            conn.executescript('''
+                CREATE TABLE IF NOT EXISTS courses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    thumbnail_url TEXT,
+                    language TEXT,
+                    level TEXT,
+                    duration INTEGER,
+                    is_published BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    type TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS course_tags (
+                    course_id INTEGER,
+                    tag_id INTEGER,
+                    PRIMARY KEY (course_id, tag_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS knowledge_points (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    course_id INTEGER,
+                    name TEXT,
+                    description TEXT,
+                    category TEXT,
+                    importance INTEGER,
+                    confidence REAL,
+                    start_time INTEGER,
+                    end_time INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            conn.commit()
+        finally:
+            conn.close()
     
     def get_connection(self):
         """获取数据库连接"""

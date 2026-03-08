@@ -1,17 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { 
-  Layout, 
-  Card, 
-  Input, 
-  Button, 
-  Space, 
-  Select, 
-  Tag, 
-  List, 
-  Avatar, 
-  Typography, 
+import {
+  Layout,
+  Card,
+  Input,
+  Button,
+  Space,
+  Select,
+  Tag,
+  List,
+  Avatar,
+  Typography,
   Divider,
   Radio,
   Slider,
@@ -25,8 +25,8 @@ import {
   Alert,
   Badge,
 } from 'antd'
-import { 
-  SearchOutlined, 
+import {
+  SearchOutlined,
   FilterOutlined,
   ReloadOutlined,
   StarOutlined,
@@ -111,14 +111,14 @@ export default function SearchPage() {
 
   const handleSearch = (value: string) => {
     if (!value.trim()) return
-    
+
     setQuery(value)
-    
+
     // 添加到搜索历史
     if (!searchHistory.includes(value)) {
       setSearchHistory(prev => [value, ...prev.slice(0, 9)])
     }
-    
+
     // 触发搜索
     refetch()
   }
@@ -201,19 +201,19 @@ export default function SearchPage() {
     if (filters.type.length > 0 && !filters.type.includes(result.type)) {
       return false
     }
-    
+
     // 相关性筛选
     if (result.relevance < filters.minRelevance) {
       return false
     }
-    
+
     // 类别筛选（如果存在）
     if (filters.category.length > 0 && result.metadata?.category) {
       if (!filters.category.includes(result.metadata.category)) {
         return false
       }
     }
-    
+
     return true
   })
 
@@ -225,34 +225,23 @@ export default function SearchPage() {
   ]
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
-        background: '#fff', 
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-      }}>
+    <>
+      <Header className="sticky top-0 z-40 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div>
-          <h2 style={{ margin: 0 }}>智能搜索</h2>
-          <p style={{ margin: 0, color: '#666', fontSize: 14 }}>
-            支持多种搜索方式，快速找到您需要的课程和知识点
-          </p>
+          <Title level={3} className="!m-0 !font-bold text-slate-900">智能搜索</Title>
+          <Text type="secondary" className="text-xs">支持多种检索范式，快速定位核心教学资产与知识节点</Text>
         </div>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-            刷新
-          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} />
         </Space>
       </Header>
-      <Content style={{ margin: '24px' }}>
+      <Content className="p-10 space-y-8">
         {/* 搜索框区域 */}
-        <Card style={{ marginBottom: 24 }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <Title level={3}>智能知识搜索</Title>
-            <Text type="secondary">
-              输入关键词，使用AI技术快速找到相关课程、知识点和视频
+        <Card className="border-none shadow-sm premium-card-tabs p-4 overflow-hidden">
+          <div className="text-center mb-8 pt-4">
+            <Title level={3} className="!mb-2">多模态智能检索引擎</Title>
+            <Text type="secondary" className="text-sm">
+              融合语义表示、向量相似度计算与混合检索，实现穿透式知识查找
             </Text>
           </div>
 
@@ -273,8 +262,8 @@ export default function SearchPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space>
               <Text strong>搜索类型：</Text>
-              <Radio.Group 
-                value={searchType} 
+              <Radio.Group
+                value={searchType}
                 onChange={(e) => handleSearchTypeChange(e.target.value)}
                 buttonStyle="solid"
               >
@@ -289,8 +278,8 @@ export default function SearchPage() {
               </Radio.Group>
             </Space>
 
-            <Button 
-              type="text" 
+            <Button
+              type="text"
               icon={<FilterOutlined />}
               onClick={() => setShowFilters(!showFilters)}
             >
@@ -352,7 +341,7 @@ export default function SearchPage() {
                   </div>
                 </Col>
               </Row>
-              
+
               {searchType === 'hybrid' && (
                 <div style={{ marginTop: 16 }}>
                   <Text strong>搜索权重：</Text>
@@ -460,33 +449,37 @@ export default function SearchPage() {
                       actions={[
                         <Space key="relevance">
                           <Text type="secondary">相关性：</Text>
-                          <Progress 
-                            percent={Math.round(result.relevance * 100)} 
-                            size="small" 
+                          <Progress
+                            percent={Math.round(result.relevance * 100)}
+                            size="small"
                             strokeColor={
-                              result.relevance > 0.8 ? '#52c41a' : 
-                              result.relevance > 0.6 ? '#faad14' : '#f5222d'
+                              result.relevance > 0.8 ? '#52c41a' :
+                                result.relevance > 0.6 ? '#faad14' : '#f5222d'
                             }
                             style={{ width: 100 }}
                           />
                         </Space>,
                         <Space key="score">
                           <Text type="secondary">评分：</Text>
-                          <Badge 
-                            count={result.score.toFixed(2)} 
+                          <Badge
+                            count={result.score.toFixed(2)}
                             style={{ backgroundColor: '#3b82f6' }}
                           />
                         </Space>,
-                        <Button 
-                          key="view" 
-                          type="text" 
+                        <Button
+                          key="view"
+                          type="text"
                           icon={<EyeOutlined />}
                           onClick={() => {
                             // 根据类型跳转到不同页面
                             if (result.type === 'course') {
                               window.open(`/courses/${result.metadata?.course_id}`, '_blank')
                             } else if (result.type === 'video') {
-                              window.open(result.metadata?.file_path, '_blank')
+                              const path = result.metadata?.file_path;
+                              if (path) {
+                                const url = path.startsWith('http') ? path : `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}${path}`;
+                                window.open(url, '_blank')
+                              }
                             }
                           }}
                         >
@@ -496,8 +489,8 @@ export default function SearchPage() {
                     >
                       <List.Item.Meta
                         avatar={
-                          <Avatar 
-                            size="large" 
+                          <Avatar
+                            size="large"
                             icon={getResultIcon(result.type)}
                             style={{ backgroundColor: 'transparent' }}
                           />
@@ -556,18 +549,18 @@ export default function SearchPage() {
             {/* 搜索统计 */}
             <Card title="搜索统计" style={{ marginBottom: 16 }}>
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Statistic 
-                  title="总结果数" 
+                <Statistic
+                  title="总结果数"
                   value={searchStats.total || 0}
                   prefix={<SearchOutlined />}
                 />
-                <Statistic 
-                  title="搜索类型" 
+                <Statistic
+                  title="搜索类型"
                   value={searchStats.search_type || '未搜索'}
                 />
                 {searchStats.search_time && (
-                  <Statistic 
-                    title="搜索时间" 
+                  <Statistic
+                    title="搜索时间"
                     value={dayjs(searchStats.search_time).format('HH:mm:ss')}
                   />
                 )}
@@ -575,7 +568,7 @@ export default function SearchPage() {
             </Card>
 
             {/* 搜索历史 */}
-            <Card 
+            <Card
               title={
                 <Space>
                   <HistoryOutlined />
@@ -583,8 +576,8 @@ export default function SearchPage() {
                 </Space>
               }
               extra={
-                <Button 
-                  type="text" 
+                <Button
+                  type="text"
                   size="small"
                   onClick={() => setSearchHistory([])}
                 >
@@ -601,7 +594,7 @@ export default function SearchPage() {
               ) : (
                 <Space direction="vertical" style={{ width: '100%' }}>
                   {searchHistory.map((historyQuery, index) => (
-                    <Card 
+                    <Card
                       key={index}
                       size="small"
                       hoverable
@@ -623,6 +616,6 @@ export default function SearchPage() {
           </Col>
         </Row>
       </Content>
-    </Layout>
+    </>
   )
 }

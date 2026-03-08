@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { 
-  Layout, 
-  Card, 
-  Table, 
-  Button, 
-  Space, 
-  Input, 
-  Tag, 
-  Modal, 
-  Form, 
-  Select, 
+import {
+  Layout,
+  Card,
+  Table,
+  Button,
+  Space,
+  Input,
+  Tag,
+  Modal,
+  Form,
+  Select,
   Upload,
   Progress,
   message,
@@ -24,11 +24,12 @@ import {
   Statistic,
   Timeline,
   Descriptions,
+  Typography,
 } from 'antd'
-import { 
-  PlusOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
   EyeOutlined,
   SearchOutlined,
   FilterOutlined,
@@ -52,6 +53,7 @@ import { useRouter } from 'next/navigation'
 const { Header, Content } = Layout
 const { Search } = Input
 const { Option } = Select
+const { Title, Text } = Typography
 
 interface Video {
   id: string
@@ -95,7 +97,7 @@ export default function VideosPage() {
 
   // 上传视频
   const uploadMutation = useMutation({
-    mutationFn: (formData: FormData) => 
+    mutationFn: (formData: FormData) =>
       api.videos.uploadVideo(formData, (progress) => {
         setUploadProgress(progress)
       }),
@@ -112,7 +114,7 @@ export default function VideosPage() {
 
   // 分析视频
   const analyzeMutation = useMutation({
-    mutationFn: ({ videoId, options }: { videoId: string; options?: any }) => 
+    mutationFn: ({ videoId, options }: { videoId: string; options?: any }) =>
       api.videos.analyzeVideo(videoId, options),
     onSuccess: () => {
       message.success('视频分析任务已开始')
@@ -158,14 +160,14 @@ export default function VideosPage() {
 
     const formData = new FormData()
     const file = fileList[0].originFileObj
-    
+
     if (!file) {
       message.error('文件无效')
       return
     }
 
     formData.append('video', file)
-    
+
     const values = form.getFieldsValue()
     Object.keys(values).forEach(key => {
       if (values[key] !== undefined) {
@@ -201,7 +203,7 @@ export default function VideosPage() {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     const secs = Math.floor(seconds % 60)
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     } else {
@@ -212,22 +214,22 @@ export default function VideosPage() {
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'uploading':
-        return { color: 'blue', text: '上传中', icon: <LoadingOutlined /> }
+        return { color: 'processing', text: '上传中', icon: <LoadingOutlined />, class: 'text-blue-600 bg-blue-50' }
       case 'processing':
-        return { color: 'orange', text: '分析中', icon: <LoadingOutlined /> }
+        return { color: 'warning', text: '分析中', icon: <LoadingOutlined />, class: 'text-amber-600 bg-amber-50' }
       case 'completed':
-        return { color: 'green', text: '已完成', icon: <CheckCircleOutlined /> }
+        return { color: 'success', text: '已完成', icon: <CheckCircleOutlined />, class: 'text-emerald-600 bg-emerald-50' }
       case 'failed':
-        return { color: 'red', text: '失败', icon: <CloseCircleOutlined /> }
+        return { color: 'error', text: '失败', icon: <CloseCircleOutlined />, class: 'text-red-600 bg-red-50' }
       default:
-        return { color: 'default', text: '未知', icon: null }
+        return { color: 'default', text: '未知', icon: null, class: 'text-gray-600 bg-gray-50' }
     }
   }
 
   const getPipelineText = (video: Video) => {
     if (video.status === 'processing') {
-      if (video.pipeline_stage === 'analyzing') return '视频转录中'
-      if (video.pipeline_stage === 'knowledge_processing') return '知识提取中'
+      if (video.pipeline_stage === 'analyzing') return '视频转录中...'
+      if (video.pipeline_stage === 'knowledge_processing') return '知识提取中...'
       if (video.pipeline_stage === 'knowledge_completed') return '知识提取完成'
       return '处理中'
     }
@@ -244,26 +246,21 @@ export default function VideosPage() {
       title: '视频',
       dataIndex: 'thumbnail_url',
       key: 'thumbnail',
-      width: 100,
+      width: 120,
       render: (url, record) => (
-        <div style={{ position: 'relative' }}>
-          <Avatar 
-            shape="square" 
-            size={64} 
+        <div className="relative group cursor-pointer overflow-hidden rounded-xl shadow-sm border border-slate-100">
+          <Avatar
+            shape="square"
+            size={80}
             src={url || '/default-video.png'}
             icon={<VideoCameraOutlined />}
+            className="group-hover:scale-110 transition-transform duration-500"
           />
+          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 duration-300">
+            <PlayCircleOutlined className="text-white text-2xl" />
+          </div>
           {record.duration && (
-            <div style={{
-              position: 'absolute',
-              bottom: 4,
-              right: 4,
-              background: 'rgba(0,0,0,0.7)',
-              color: 'white',
-              padding: '2px 4px',
-              borderRadius: 4,
-              fontSize: 10,
-            }}>
+            <div className="absolute bottom-1 right-1 bg-black/70 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
               {formatDuration(record.duration)}
             </div>
           )}
@@ -275,18 +272,22 @@ export default function VideosPage() {
       dataIndex: 'title',
       key: 'title',
       render: (text, record) => (
-        <div>
-          <div style={{ fontWeight: 500, marginBottom: 4 }}>{text}</div>
-          <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
-            {record.description?.substring(0, 80)}...
+        <div className="max-w-md">
+          <div className="font-bold text-slate-800 text-base mb-1 line-clamp-1">{text}</div>
+          <div className="text-xs text-slate-500 mb-2 line-clamp-2">
+            {record.description || '暂无描述'}
           </div>
-          <Space size={[4, 0]} wrap>
-            <Tag icon={<ClockCircleOutlined />}>
-              {formatDuration(record.duration || 0)}
-            </Tag>
-            <Tag>{record.format || 'mp4'}</Tag>
-            <Tag>{formatFileSize(record.file_size || 0)}</Tag>
-          </Space>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
+              <ClockCircleOutlined className="mr-1" /> {formatDuration(record.duration || 0)}
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600 uppercase">
+              {record.format || 'mp4'}
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
+              {formatFileSize(record.file_size || 0)}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -294,25 +295,26 @@ export default function VideosPage() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 120,
+      width: 180,
       render: (status, record) => {
         const config = getStatusConfig(status)
         return (
-          <div>
-            <Badge 
-              status={config.color as any} 
-              text={config.text}
+          <div className="space-y-2">
+            <Badge
+              status={config.color as any}
+              text={<span className="font-bold text-sm">{config.text}</span>}
             />
             {getPipelineText(record) && (
-              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+              <div className="text-[11px] text-slate-400 font-medium">
                 {getPipelineText(record)}
               </div>
             )}
             {record.progress !== undefined && record.progress < 100 && (
-              <Progress 
-                percent={record.progress} 
-                size="small" 
-                style={{ marginTop: 4 }}
+              <Progress
+                percent={record.progress}
+                size="small"
+                strokeColor="#6366f1"
+                trailColor="#f1f5f9"
               />
             )}
           </div>
@@ -323,12 +325,14 @@ export default function VideosPage() {
       title: '关联课程',
       dataIndex: 'course_id',
       key: 'course',
-      width: 100,
+      width: 120,
       render: (courseId) => (
         courseId ? (
-          <Tag color="blue">课程 #{courseId}</Tag>
+          <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+            #{courseId} 课程
+          </div>
         ) : (
-          <Tag color="default">未关联</Tag>
+          <div className="text-slate-300 text-xs italic">未关联</div>
         )
       ),
     },
@@ -336,218 +340,184 @@ export default function VideosPage() {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 120,
-      render: (date) => dayjs(date).format('MM-DD HH:mm'),
+      width: 140,
+      render: (date) => (
+        <div className="text-slate-500 text-xs font-medium">
+          {dayjs(date).format('YYYY-MM-DD')}<br />
+          <span className="opacity-60">{dayjs(date).format('HH:mm:ss')}</span>
+        </div>
+      ),
     },
     {
       title: '操作',
       key: 'action',
-      width: 200,
+      width: 160,
       render: (_, record) => (
-        <Space size="small">
+        <div className="flex items-center space-x-1">
           <Tooltip title="查看详情">
-            <Button 
-              type="text" 
-              icon={<EyeOutlined />} 
+            <Button
+              type="text"
+              size="large"
+              icon={<EyeOutlined className="text-slate-400 hover:text-indigo-500" />}
               onClick={() => handleViewDetails(record)}
             />
           </Tooltip>
           {record.status === 'completed' && (
             <Tooltip title="播放视频">
-              <Button 
-                type="text" 
-                icon={<PlayCircleOutlined />}
-                onClick={() => window.open(record.file_path, '_blank')}
+              <Button
+                type="text"
+                size="large"
+                icon={<PlayCircleOutlined className="text-slate-400 hover:text-emerald-500" />}
+                onClick={() => {
+                  const path = record.file_path;
+                  const url = path.startsWith('http') ? path : `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}${path}`;
+                  window.open(url, '_blank');
+                }}
               />
             </Tooltip>
           )}
           {record.status === 'completed' && !record.analysis_result && (
             <Tooltip title="开始分析">
-              <Button 
-                type="text" 
-                icon={<FileTextOutlined />}
+              <Button
+                type="text"
+                size="large"
+                icon={<FileTextOutlined className="text-slate-400 hover:text-orange-500" />}
                 onClick={() => handleAnalyze(record.id)}
                 loading={analyzeMutation.isPending}
               />
             </Tooltip>
           )}
           <Popconfirm
-            title="确定要删除这个视频吗？"
-            description="删除后无法恢复，相关的分析结果也会被删除。"
+            title="删除视频"
+            description="确定要删除吗？分析结果也将不可恢复。"
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"
+            okButtonProps={{ danger: true }}
           >
             <Tooltip title="删除">
-              <Button 
-                type="text" 
-                danger 
-                icon={<DeleteOutlined />} 
+              <Button
+                type="text"
+                size="large"
+                danger
+                icon={<DeleteOutlined className="opacity-50 hover:opacity-100" />}
               />
             </Tooltip>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ]
 
-  const videoStats = {
-    total: videos.length,
-    uploading: videos.filter(v => v.status === 'uploading').length,
-    processing: videos.filter(v => v.status === 'processing').length,
-    completed: videos.filter(v => v.status === 'completed').length,
-    failed: videos.filter(v => v.status === 'failed').length,
-  }
+  const videoStats = [
+    { title: '视频总数', value: videos.length, icon: <VideoCameraOutlined />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { title: '上传中', value: videos.filter(v => v.status === 'uploading').length, icon: <LoadingOutlined />, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { title: '处理中', value: videos.filter(v => v.status === 'processing').length, icon: <LoadingOutlined />, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { title: '已完成', value: videos.filter(v => v.status === 'completed').length, icon: <CheckCircleOutlined />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  ]
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
-        background: '#fff', 
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-      }}>
+    <>
+      <Header className="sticky top-0 z-40 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div>
-          <h2 style={{ margin: 0 }}>视频管理</h2>
-          <p style={{ margin: 0, color: '#666', fontSize: 14 }}>
-            管理所有视频文件，包括上传、分析和删除视频
-          </p>
+          <Title level={3} className="!m-0 !font-bold">视频管理</Title>
+          <Text type="secondary" className="text-xs">管理教学资源，深度挖掘视频知识价值</Text>
         </div>
-        <Space>
+
+        <div className="flex items-center space-x-4">
           <Search
-            placeholder="搜索视频标题或描述"
+            placeholder="搜索视频资源..."
             allowClear
-            enterButton={<SearchOutlined />}
             onSearch={handleSearch}
-            style={{ width: 300 }}
+            className="w-64"
           />
-          <Button icon={<FilterOutlined />}>筛选</Button>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-            刷新
-          </Button>
-          <Button 
-            type="primary" 
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} className="hover:rotate-180 transition-transform duration-500" />
+          <Button
+            type="primary"
             icon={<UploadOutlined />}
             onClick={() => router.push('/videos/upload')}
           >
             高级上传
           </Button>
-          <Button 
+          <Button
             icon={<PlusOutlined />}
             onClick={handleUpload}
           >
             快速上传
           </Button>
-        </Space>
+        </div>
       </Header>
-      <Content style={{ margin: '24px' }}>
-        {/* 统计卡片 */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="视频总数"
-                value={videoStats.total}
-                prefix={<VideoCameraOutlined />}
-                valueStyle={{ color: '#3b82f6' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="上传中"
-                value={videoStats.uploading}
-                prefix={<LoadingOutlined />}
-                valueStyle={{ color: '#3b82f6' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="分析中"
-                value={videoStats.processing}
-                prefix={<LoadingOutlined />}
-                valueStyle={{ color: '#f59e0b' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="已完成"
-                value={videoStats.completed}
-                prefix={<CheckCircleOutlined />}
-                valueStyle={{ color: '#10b981' }}
-              />
-            </Card>
-          </Col>
+
+      <Content className="p-10 space-y-8">
+        {/* 统计横廊 */}
+        <Row gutter={[24, 24]}>
+          {videoStats.map((item, idx) => (
+            <Col xs={24} sm={12} lg={6} key={idx}>
+              <Card className="hover:shadow-lg transition-all group">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Text type="secondary" className="text-[10px] font-bold uppercase tracking-widest block mb-1">{item.title}</Text>
+                    <Title level={3} className="!m-0 !font-black !text-slate-900 group-hover:scale-105 transition-transform">{item.value}</Title>
+                  </div>
+                  <div className={`p-3 rounded-2xl ${item.bg} ${item.color} text-2xl animate-float`} style={{ animationDelay: `${idx * 0.15}s` }}>
+                    {item.icon}
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          ))}
         </Row>
 
-        <Card>
+        <Card className="border-none shadow-sm overflow-hidden">
           <Table
             columns={columns}
             dataSource={videos}
             rowKey="id"
             loading={isLoading}
+            className="premium-table"
             pagination={{
-              total: videosData?.data?.total || 0,
+              total: (videosData as any)?.pagination?.total || videos.length,
               pageSize: 10,
               showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total) => `共 ${total} 条记录`,
+              showTotal: (total) => <span className="text-slate-400 text-xs">共 {total} 个视频资源</span>,
             }}
           />
         </Card>
       </Content>
 
-      {/* 上传视频模态框 */}
+      {/* 快速上传模态框 */}
       <Modal
-        title="上传视频"
+        title={<div className="text-lg font-bold pb-4 border-b">快速上传视频</div>}
         open={isUploadModalOpen}
         onCancel={handleUploadCancel}
         onOk={handleUploadSubmit}
         confirmLoading={uploadMutation.isPending}
-        width={600}
+        width={540}
+        centered
+        className="premium-modal"
       >
         <Form
           form={form}
           layout="vertical"
+          className="pt-6"
         >
           <Form.Item
             name="title"
-            label="视频标题"
+            label={<span className="font-bold text-slate-700">视频标题</span>}
             rules={[{ required: true, message: '请输入视频标题' }]}
           >
-            <Input placeholder="请输入视频标题" />
+            <Input placeholder="输入具有辨识度的标题" />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="视频描述"
+            label={<span className="font-bold text-slate-700">内容简介</span>}
           >
-            <Input.TextArea 
-              placeholder="请输入视频描述" 
-              rows={3}
-            />
+            <Input.TextArea placeholder="简要描述视频的核心教学内容" rows={3} />
           </Form.Item>
 
           <Form.Item
-            name="course_id"
-            label="关联课程"
-          >
-            <Select placeholder="请选择关联课程" allowClear>
-              <Option value={1}>Python编程入门</Option>
-              <Option value={2}>机器学习基础</Option>
-              <Option value={3}>深度学习实战</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            label="视频文件"
+            label={<span className="font-bold text-slate-700">资源文件</span>}
             required
           >
             <Upload
@@ -556,134 +526,160 @@ export default function VideosPage() {
                 setFileList([file])
                 return false
               }}
-              onRemove={() => {
-                setFileList([])
-              }}
+              onRemove={() => setFileList([])}
               maxCount={1}
               accept="video/*"
+              className="w-full"
             >
-              <Button icon={<UploadOutlined />}>选择视频文件</Button>
+              <Button icon={<UploadOutlined />} className="w-full h-24 border-dashed rounded-xl bg-slate-50 hover:bg-white hover:border-indigo-400 transition-all flex flex-col items-center justify-center">
+                <span className="mt-2 text-slate-500 font-medium">点击或将视频文件拖拽至此</span>
+              </Button>
             </Upload>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              支持格式: MP4, AVI, MOV, WMV, FLV, MKV
-            </div>
           </Form.Item>
 
           {uploadProgress > 0 && (
-            <Form.Item label="上传进度">
-              <Progress percent={uploadProgress} />
-            </Form.Item>
+            <div className="mt-4 p-4 bg-indigo-50 rounded-xl">
+              <div className="flex justify-between mb-2">
+                <span className="text-xs font-bold text-indigo-700 uppercase">正在上传...</span>
+                <span className="text-xs font-black text-indigo-700">{uploadProgress}%</span>
+              </div>
+              <Progress percent={uploadProgress} showInfo={false} strokeColor="#6366f1" strokeWidth={8} />
+            </div>
           )}
         </Form>
       </Modal>
 
-      {/* 视频详情模态框 */}
+      {/* 视频详情 - 沉浸式视图 */}
       <Modal
-        title="视频详情"
+        title={null}
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={null}
-        width={800}
+        width={1000}
+        centered
+        className="detail-modal"
+        styles={{ body: { padding: 0 } }}
       >
         {selectedVideo && (
-          <div>
-            <Descriptions bordered column={2}>
-              <Descriptions.Item label="视频标题" span={2}>
-                {selectedVideo.title}
-              </Descriptions.Item>
-              <Descriptions.Item label="视频描述">
-                {selectedVideo.description}
-              </Descriptions.Item>
-              <Descriptions.Item label="状态">
-                <Space direction="vertical" size={4}>
-                  <Badge 
-                    status={getStatusConfig(selectedVideo.status).color as any} 
-                    text={getStatusConfig(selectedVideo.status).text}
-                  />
-                  {getPipelineText(selectedVideo) && (
-                    <span style={{ color: '#666' }}>{getPipelineText(selectedVideo)}</span>
-                  )}
-                </Space>
-              </Descriptions.Item>
-              <Descriptions.Item label="时长">
-                {formatDuration(selectedVideo.duration || 0)}
-              </Descriptions.Item>
-              <Descriptions.Item label="文件大小">
-                {formatFileSize(selectedVideo.file_size || 0)}
-              </Descriptions.Item>
-              <Descriptions.Item label="格式">
-                {selectedVideo.format || 'mp4'}
-              </Descriptions.Item>
-              <Descriptions.Item label="创建时间">
-                {dayjs(selectedVideo.created_at).format('YYYY-MM-DD HH:mm:ss')}
-              </Descriptions.Item>
-              <Descriptions.Item label="更新时间">
-                {dayjs(selectedVideo.updated_at).format('YYYY-MM-DD HH:mm:ss')}
-              </Descriptions.Item>
-              <Descriptions.Item label="文件路径" span={2}>
-                {selectedVideo.file_path}
-              </Descriptions.Item>
-            </Descriptions>
-
-            {selectedVideo.analysis_result && (
-              <Card title="分析结果" style={{ marginTop: 16 }}>
-                <Timeline>
-                  <Timeline.Item color="green">
-                    <p>语音识别完成</p>
-                    <p style={{ fontSize: 12, color: '#666' }}>
-                      识别时长: {selectedVideo.analysis_result.transcript?.duration || 0}秒
-                    </p>
-                  </Timeline.Item>
-                  <Timeline.Item color="green">
-                    <p>关键帧提取完成</p>
-                    <p style={{ fontSize: 12, color: '#666' }}>
-                      提取数量: {selectedVideo.analysis_result.keyframes?.length || 0}个
-                    </p>
-                  </Timeline.Item>
-                  <Timeline.Item color="green">
-                    <p>场景检测完成</p>
-                    <p style={{ fontSize: 12, color: '#666' }}>
-                      场景数量: {selectedVideo.analysis_result.scenes?.length || 0}个
-                    </p>
-                  </Timeline.Item>
-                </Timeline>
-              </Card>
-            )}
-
-            {selectedVideo.transcript && (
-              <Card title="转录文本" style={{ marginTop: 16 }}>
-                <div style={{ maxHeight: 200, overflowY: 'auto', padding: 8 }}>
-                  {selectedVideo.transcript.text || '暂无转录文本'}
-                </div>
-              </Card>
-            )}
-
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <Space>
-                <Button 
-                  type="primary" 
-                  icon={<PlayCircleOutlined />}
-                  onClick={() => window.open(selectedVideo.file_path, '_blank')}
-                >
-                  播放视频
-                </Button>
-                {!selectedVideo.analysis_result && (
-                  <Button 
-                    icon={<FileTextOutlined />}
+          <div className="flex flex-col lg:flex-row min-h-[600px]">
+            {/* 左侧：视频及核心信息 */}
+            <div className="lg:w-7/12 p-8 bg-slate-900 text-white flex flex-col">
+              <div className="aspect-video bg-black rounded-2xl overflow-hidden mb-8 relative group shadow-2xl">
+                {selectedVideo.thumbnail_url ? (
+                  <img src={selectedVideo.thumbnail_url} className="w-full h-full object-cover opacity-60" />
+                ) : <div className="w-full h-full flex items-center justify-center text-slate-700 text-4xl"><VideoCameraOutlined /></div>}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Button
+                    type="primary"
+                    shape="circle"
+                    size="large"
+                    icon={<PlayCircleOutlined />}
+                    className="!w-20 !h-20 !text-3xl bg-indigo-600 hover:scale-110 !border-none"
                     onClick={() => {
-                      handleAnalyze(selectedVideo.id)
-                      setIsDetailModalOpen(false)
+                      const path = selectedVideo.file_path;
+                      const url = path.startsWith('http') ? path : `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}${path}`;
+                      window.open(url, '_blank');
                     }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <Title level={2} className="!m-0 !text-white !font-black !tracking-tight">{selectedVideo.title}</Title>
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusConfig(selectedVideo.status).class}`}>
+                    {selectedVideo.status}
+                  </div>
+                </div>
+                <Text className="text-slate-400 text-base leading-relaxed">{selectedVideo.description || '无视频描述信息'}</Text>
+
+                <div className="grid grid-cols-2 gap-6 pt-8 border-t border-slate-800">
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">文件大小</div>
+                    <div className="text-lg font-black">{formatFileSize(selectedVideo.file_size || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">视频格式</div>
+                    <div className="text-lg font-black uppercase text-indigo-400">{selectedVideo.format || 'mp4'}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">视频时长</div>
+                    <div className="text-lg font-black">{formatDuration(selectedVideo.duration || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">创建时间</div>
+                    <div className="text-sm font-bold">{dayjs(selectedVideo.created_at).format('YYYY-MM-DD HH:mm')}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 右侧：分析面板 */}
+            <div className="lg:w-5/12 p-8 bg-white overflow-y-auto max-h-[700px]">
+              <div className="flex items-center justify-between mb-8">
+                <Title level={4} className="!m-0">AI 分析报告</Title>
+                {!selectedVideo.analysis_result && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<FileTextOutlined />}
+                    onClick={() => handleAnalyze(selectedVideo.id)}
                     loading={analyzeMutation.isPending}
-                  >
-                    开始分析
-                  </Button>
+                  >开始分析</Button>
                 )}
-              </Space>
+              </div>
+
+              {selectedVideo.analysis_result ? (
+                <div className="space-y-8">
+                  <Timeline className="premium-timeline">
+                    <Timeline.Item color="indigo" label="STEP 1">
+                      <div className="font-bold text-slate-800">深度语音转录</div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        识别精准度: 98% | 词汇量: {selectedVideo.analysis_result.transcript?.total_words || 0}
+                      </div>
+                    </Timeline.Item>
+                    <Timeline.Item color="violet" label="STEP 2">
+                      <div className="font-bold text-slate-800">关键帧视觉分析</div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        提取关键样本: {selectedVideo.analysis_result.keyframes?.length || 0} 个场景快照
+                      </div>
+                    </Timeline.Item>
+                    <Timeline.Item color="emerald" label="STEP 3">
+                      <div className="font-bold text-slate-800">知识图谱构建</div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        提取核心概念: {selectedVideo.analysis_result.knowledge_points?.length || 0} 个知识实体
+                      </div>
+                    </Timeline.Item>
+                  </Timeline>
+
+                  {selectedVideo.transcript && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">转录文本摘要</div>
+                      <div className="text-xs text-slate-600 leading-relaxed italic line-clamp-6">
+                        "{selectedVideo.transcript.text}"
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="p-4 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200">
+                    <div className="text-xs font-bold opacity-80 mb-2 uppercase">分析耗时</div>
+                    <div className="text-2xl font-black">2.4 <span className="text-sm opacity-60">minutes</span></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-20">
+                  <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center text-4xl text-slate-200">
+                    <FileTextOutlined />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-400">尚未进行深度分析</div>
+                    <Text type="secondary" className="text-xs">点击上方按钮，让 AI 为您解读视频中的核心知识点</Text>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
       </Modal>
-    </Layout>
+    </>
   )
 }

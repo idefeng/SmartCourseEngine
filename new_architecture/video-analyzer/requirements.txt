@@ -3,6 +3,7 @@
 # Web框架
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+httpx==0.25.1
 
 # 数据库
 asyncpg==0.29.0

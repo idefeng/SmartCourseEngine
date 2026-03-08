@@ -19,9 +19,10 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, status, BackgroundTasks, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, BackgroundTasks, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import httpx
 
 # 添加共享模块路径
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
@@ -111,6 +112,27 @@ class VideoAnalyzer:
         self.faster_whisper_model = None
         self.clip_model = None
         self.yolo_model = None
+        self.gateway_url = os.getenv("GATEWAY_INTERNAL_URL", "http://api-gateway:8000")
+    
+    async def push_progress(self, task_id: str, user_id: int, progress: int, stage: str, message: str):
+        """推送进度到WebSocket"""
+        if not task_id or not user_id:
+            return
+            
+        url = f"{self.gateway_url.rstrip('/')}/api/v1/internal/ws/task-progress"
+        payload = {
+            "task_id": task_id,
+            "user_id": user_id,
+            "progress": progress,
+            "stage": stage,
+            "message": message
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(url, json=payload)
+        except Exception as e:
+            logger.error(f"推送进度失败: {e}")
     
     async def load_models(self):
         """加载AI模型（延迟加载）"""
@@ -201,13 +223,25 @@ class VideoAnalyzer:
                                 "text": seg_text,
                             }
                         )
+                        
+                        # 实时推送进度 (20% - 70%)
+                        if duration > 0 and idx % 5 == 0:
+                            current_progress = 20 + int((float(seg.end) / duration) * 50)
+                            await self.push_progress(
+                                task_id=task_id,
+                                user_id=user_id,
+                                progress=min(70, current_progress),
+                                stage="analyzing",
+                                message=f"正在转录分片 {idx+1}... ({int(float(seg.end))}s / {int(duration)}s)"
+                            )
+
                     result = {
                         "text": " ".join(text_parts).strip(),
                         "segments": segment_list,
                         "language": getattr(info, "language", "zh"),
                         "duration": duration,
                     }
-                    logger.info(f"转录完成，时长: {result['duration']:.2f}秒")
+                    logger.info(f"转录完成，时长: {result['duration']:.2f}秒, 分片数: {len(segment_list)}")
                     return result
                 except Exception as e:
                     logger.warning(f"faster-whisper转录失败，回退到whisper子进程: {e}")
@@ -516,6 +550,8 @@ async def upload_video(
 async def analyze_video(
     video_path: str,
     course_id: int = None,
+    task_id: str = None,
+    user_id: int = None,
     sync: bool = False,
     background_tasks: BackgroundTasks = None
 ):
@@ -558,7 +594,7 @@ async def analyze_video(
         # 同步模式用于Worker串行处理后续步骤
         if sync:
             logger.info(f"同步模式执行视频分析: {job_id}")
-            return await process_video_task(job_id, video_path_obj, course_id)
+            return await process_video_task(job_id, video_path_obj, course_id, task_id, user_id)
 
         # 在后台执行耗时任务
         if background_tasks:
@@ -566,12 +602,14 @@ async def analyze_video(
                 process_video_task, 
                 job_id, 
                 video_path_obj, 
-                course_id
+                course_id,
+                task_id,
+                user_id
             )
         else:
             # 如果没有传入 background_tasks（例如测试环境），则同步执行（不推荐）
             logger.warning("未检测到 BackgroundTasks，将同步执行分析（可能导致超时）")
-            return await process_video_task(job_id, video_path_obj, course_id)
+            return await process_video_task(job_id, video_path_obj, course_id, task_id, user_id)
 
         return {
             "success": True,
@@ -592,12 +630,12 @@ async def analyze_video(
             detail=f"提交分析任务失败: {str(e)}"
         )
 
-async def process_video_task(job_id: str, video_path_obj: Path, course_id: int = None):
+async def process_video_task(job_id: str, video_path_obj: Path, course_id: int = None, task_id: str = None, user_id: int = None):
     """后台处理视频分析任务"""
     try:
         logger.info(f"开始执行后台分析任务: {job_id}")
         
-        transcript_result = await video_analyzer.transcribe_video(video_path_obj)
+        transcript_result = await video_analyzer.transcribe_video(video_path_obj, task_id=task_id, user_id=user_id)
         if isinstance(transcript_result, Exception):
             logger.error(f"转录失败: {transcript_result}")
             transcript_result = {"text": "", "segments": [], "error": str(transcript_result)}

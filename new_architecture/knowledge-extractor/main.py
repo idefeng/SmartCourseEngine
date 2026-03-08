@@ -198,69 +198,44 @@ class KnowledgeExtractor:
     
     def _mock_extract_knowledge_points(self, transcript: Dict[str, Any], 
                                       course_id: int = None) -> List[Dict[str, Any]]:
-        """模拟知识点提取"""
-        mock_knowledge_points = [
-            {
-                "name": "变量声明",
-                "description": "学习如何声明和使用Python变量",
-                "category": "编程基础",
-                "importance": 3,
-                "confidence": 0.9,
-                "start_time": 0,
-                "end_time": 60,
-                "course_id": course_id or 1,
-                "concepts": ["变量", "赋值", "数据类型"],
-                "source_segment": "在Python中，我们使用等号来给变量赋值..."
-            },
-            {
-                "name": "数据类型",
-                "description": "了解Python的基本数据类型",
-                "category": "编程基础",
-                "importance": 4,
-                "confidence": 0.85,
-                "start_time": 60,
-                "end_time": 120,
-                "course_id": course_id or 1,
-                "concepts": ["整数", "浮点数", "字符串", "布尔值"],
-                "source_segment": "Python支持多种数据类型，包括整数、浮点数、字符串等..."
-            },
-            {
-                "name": "条件语句",
-                "description": "学习if-else条件判断",
-                "category": "控制流",
-                "importance": 4,
-                "confidence": 0.8,
-                "start_time": 120,
-                "end_time": 180,
-                "course_id": course_id or 1,
-                "concepts": ["if语句", "else语句", "条件判断"],
-                "source_segment": "使用if语句可以根据条件执行不同的代码块..."
-            },
-            {
-                "name": "循环语句",
-                "description": "学习for和while循环",
-                "category": "控制流",
-                "importance": 4,
-                "confidence": 0.8,
-                "start_time": 180,
-                "end_time": 240,
-                "course_id": course_id or 1,
-                "concepts": ["for循环", "while循环", "迭代"],
-                "source_segment": "循环语句允许我们重复执行一段代码..."
-            }
-        ]
-        
-        # 根据转录文本调整时间戳
+        """模拟知识点提取 - 改进为基于关键词的动态模拟"""
+        text = transcript.get("text", "")
         segments = transcript.get("segments", [])
-        if segments:
-            for i, kp in enumerate(mock_knowledge_points):
-                if i < len(segments):
-                    segment = segments[i]
-                    kp["start_time"] = segment.get("start", kp["start_time"])
-                    kp["end_time"] = segment.get("end", kp["end_time"])
-                    kp["source_segment"] = segment.get("text", kp["source_segment"])[:200]
         
-        return mock_knowledge_points
+        # 使用动态关键词匹配
+        discovered_concepts = self._extract_concepts(text)
+        
+        # 如果没有匹配到预设关键词，尝试从片段中提取一些通用内容
+        knowledge_points = []
+        
+        if discovered_concepts:
+            # 将发现的概念分配到前几个片段中
+            for i, concept in enumerate(discovered_concepts):
+                segment = segments[i % len(segments)] if segments else {}
+                start_time = segment.get("start", i * 60)
+                end_time = segment.get("end", start_time + 60)
+                
+                point = {
+                    "name": concept["name"],
+                    "description": f"从视频中自动识别到概念: {concept['name']}",
+                    "category": concept["category"],
+                    "importance": concept.get("importance", 3),
+                    "confidence": concept.get("confidence", 0.75),
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "course_id": course_id or 1,
+                    "concepts": [concept["name"]],
+                    "source_segment": segment.get("text", "")[:200]
+                }
+                knowledge_points.append(point)
+        else:
+            # 如果什么都没匹配到，不返回那个误导性的Python 4件套
+            # 而是返回一个基于文件信息的通用提示点（如果由于演示需要必须返回数据）
+            # 或者干脆返回空（推荐，更诚实）
+            logger.info("未发现匹配的知识点关键词，返回空列表")
+            return []
+        
+        return knowledge_points
     
     def _extract_concepts(self, text: str) -> List[Dict[str, Any]]:
         """提取文本中的关键概念（模拟）"""
@@ -273,7 +248,14 @@ class KnowledgeExtractor:
             "循环": ["循环", "loop", "for", "while", "迭代"],
             "条件": ["条件", "if", "else", "elif", "判断"],
             "数据类型": ["类型", "int", "str", "float", "bool", "列表", "字典"],
-            "类": ["类", "class", "对象", "object", "实例"]
+            "类": ["类", "class", "对象", "object", "实例"],
+            "人工智能": ["人工智能", "AI", "机器学习", "深度学习", "神经网络", "大模型", "LLM"],
+            "前端开发": ["前端", "HTML", "CSS", "React", "Vue", "JavaScript", "JS", "网页"],
+            "后端开发": ["后端", "数据库", "SQL", "API", "服务器", "Docker", "K8s"],
+            "数据科学": ["数据分析", "Pandas", "Numpy", "统计", "可视化", "Matplotlib"],
+            "教育技术": ["在线学习", "课程", "作业", "视频教程", "知识点", "测验"],
+            "音乐艺术": ["音乐", "歌词", "旋律", "节奏", "\u266a", "演唱", "艺术"],
+            "生活百科": ["生活", "健康", "美食", "旅游", "常识", "技巧", "日常"]
         }
         
         concepts = []
@@ -290,6 +272,17 @@ class KnowledgeExtractor:
                     })
                     break
         
+        # 增加保底逻辑：如果没有匹配到任何专业概念，但文本不为空，则提取一个“内容概述”知识点
+        if not concepts and text.strip():
+            # 提取前15个字作为标题的一部分
+            summary_title = text.strip()[:10] + "..."
+            concepts.append({
+                "name": f"视频内容概览",
+                "category": "通用内容",
+                "importance": 2,
+                "confidence": 0.6
+            })
+        
         # 去重
         unique_concepts = []
         seen_names = set()
@@ -304,11 +297,18 @@ class KnowledgeExtractor:
         """获取概念类别"""
         category_map = {
             "变量": "编程基础",
-            "函数": "函数",
+            "函数": "编程基础",
             "循环": "控制流",
             "条件": "控制流",
             "数据类型": "编程基础",
-            "类": "面向对象"
+            "类": "面向对象",
+            "人工智能": "人工智能",
+            "前端开发": "开发技术",
+            "后端开发": "开发技术",
+            "数据科学": "数据科学",
+            "教育技术": "通用教育",
+            "音乐艺术": "人文艺术",
+            "生活百科": "生活百科"
         }
         return category_map.get(concept_name, "其他")
     

@@ -26,7 +26,7 @@ import {
   PictureOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
-import { useUpload, UploadTask, UploadStatus } from '@/services/upload';
+import { useUpload, UploadTask, UploadStatus, UploadEventType } from '@/services/upload';
 import { useWebSocket, MessageType } from '@/services/websocket';
 
 const { Title, Text } = Typography;
@@ -44,7 +44,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
   compact = false,
   onAnalysisCompleted,
 }) => {
-  const { getTask, getTasks } = useUpload();
+  const { getTask, getTasks, on, off } = useUpload();
   const wsClient = useWebSocket();
 
   const [tasks, setTasks] = useState<UploadTask[]>([]);
@@ -54,6 +54,27 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
   // 加载任务
   useEffect(() => {
     loadTasks();
+
+    const handleProgress = (event: any) => {
+      const { task } = event;
+      updateTask(task);
+    };
+
+    const handleCompleted = (event: any) => {
+      const { task } = event;
+      updateTask(task);
+      loadTasks(); // 重新加载以确保状态同步
+    };
+
+    const handleFailed = (event: any) => {
+      const { task } = event;
+      updateTask(task);
+    };
+
+    // 监听UploadManager事件
+    on(UploadEventType.PROGRESS, handleProgress);
+    on(UploadEventType.COMPLETED, handleCompleted);
+    on(UploadEventType.FAILED, handleFailed);
 
     // 监听WebSocket消息
     const handleVideoProgress = (message: any) => {
@@ -100,12 +121,15 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
     wsClient.on(MessageType.TASK_FAILED, handleTaskFailed);
 
     return () => {
+      off(UploadEventType.PROGRESS, handleProgress);
+      off(UploadEventType.COMPLETED, handleCompleted);
+      off(UploadEventType.FAILED, handleFailed);
       wsClient.off(MessageType.VIDEO_ANALYSIS_PROGRESS, handleVideoProgress);
       wsClient.off(MessageType.VIDEO_ANALYSIS_COMPLETED, handleVideoAnalysisCompleted);
       wsClient.off(MessageType.TASK_COMPLETED, handleTaskCompleted);
       wsClient.off(MessageType.TASK_FAILED, handleTaskFailed);
     };
-  }, []);
+  }, [on, off]);
 
   // 如果有taskId，只显示特定任务
   useEffect(() => {
@@ -114,6 +138,23 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
       setSelectedTask(task || null);
     }
   }, [taskId]);
+
+  const updateTask = (task: UploadTask) => {
+    setTasks(prev => {
+      const index = prev.findIndex(t => t.upload_id === task.upload_id);
+      if (index >= 0) {
+        const newTasks = [...prev];
+        newTasks[index] = task;
+        return newTasks;
+      } else {
+        return [...prev, task];
+      }
+    });
+
+    if (selectedTask?.upload_id === task.upload_id) {
+      setSelectedTask(task);
+    }
+  };
 
   // 加载任务
   const loadTasks = () => {

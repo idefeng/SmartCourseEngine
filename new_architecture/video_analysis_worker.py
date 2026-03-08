@@ -41,11 +41,15 @@ class VideoAnalysisWorker:
         self.max_retries = int(os.getenv("ANALYZER_MAX_RETRIES", "3"))
         self.retry_delay = float(os.getenv("ANALYZER_RETRY_DELAY", "2.0"))
 
-    async def call_video_analyzer(self, file_path: str, course_id: Optional[int] = None) -> Dict[str, Any]:
+    async def call_video_analyzer(self, file_path: str, course_id: Optional[int] = None, task_id: Optional[str] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
         url = f"{self.analyzer_url.rstrip('/')}/api/v1/videos/analyze"
         params: Dict[str, Any] = {"video_path": file_path, "sync": "true"}
         if course_id is not None:
             params["course_id"] = course_id
+        if task_id is not None:
+            params["task_id"] = task_id
+        if user_id is not None:
+            params["user_id"] = user_id
         
         # 延长超时时间到3600秒（1小时），因为Whisper转录大文件可能非常耗时
         timeout = httpx.Timeout(3600.0, connect=60.0)
@@ -234,7 +238,12 @@ class VideoAnalysisWorker:
                         file_path=file_path,
                         worker_stage="analyzing"
                     )
-                    analysis_result = await self.call_video_analyzer(file_path=file_path, course_id=course_id)
+                    analysis_result = await self.call_video_analyzer(
+                        file_path=file_path, 
+                        course_id=course_id,
+                        task_id=upload_id,
+                        user_id=user_id
+                    )
                     
                     # 2. 知识提取阶段 (70% - 95%)
                     await self.push_websocket_progress(

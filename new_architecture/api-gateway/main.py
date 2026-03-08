@@ -41,12 +41,14 @@ try:
     from shared.utils import setup_logger, handle_exceptions, SmartCourseError
     from shared.models import BaseResponse
     from shared.database import check_database_health
+    from shared.task_queue import publish_video_analysis_task
 except ImportError:
     # 备用导入方式
     from config import config, load_config_from_file
     from utils import setup_logger, handle_exceptions, SmartCourseError
     from models import BaseResponse
     from database import check_database_health
+    from task_queue import publish_video_analysis_task
 
 
 # ============================================================================
@@ -362,18 +364,55 @@ async def delete_course(
         message="课程删除成功"
     )
 
-@app.post("/api/v1/videos/analyze", tags=["视频分析"])
+@app.post("/api/v1/videos/{video_id}/analyze", tags=["视频分析"])
 @handle_exceptions
 async def analyze_video(
+    video_id: str,
+    options: Dict[str, Any] = Body(default={}),
     authenticated: bool = Depends(verify_api_key)
 ):
     """分析视频"""
-    # 这里应该代理到video-analyzer服务
-    return BaseResponse(
-        success=True,
-        message="视频分析请求已接收",
-        data={"analysis_id": "demo-analysis-id"}
-    )
+    metadata_dir = Path("/app/uploads/temp")
+    metadata_file = metadata_dir / f"{video_id}.json"
+    
+    if not metadata_file.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="视频元数据未找到，无法分析"
+        )
+        
+    try:
+        payload = json.loads(metadata_file.read_text(encoding="utf-8"))
+        
+        # 准备任务负载
+        task_payload = {
+            "task_id": video_id,
+            "upload_id": video_id,
+            "user_id": payload.get("user_id", 0),
+            "file_name": payload.get("file_name"),
+            "file_path": payload.get("file_path"),
+            "file_hash": payload.get("file_hash"),
+            "metadata": payload.get("metadata", {}),
+            "options": options
+        }
+        
+        # 发布任务
+        task_info = await publish_video_analysis_task(task_payload)
+        
+        return BaseResponse(
+            success=True,
+            message="视频分析流水线已重启动",
+            data={
+                "video_id": video_id,
+                "task_info": task_info
+            }
+        )
+    except Exception as e:
+        logger.error(f"启动视频分析失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"启动分析失败: {str(e)}"
+        )
 
 @app.get("/api/v1/videos", tags=["视频"])
 @handle_exceptions

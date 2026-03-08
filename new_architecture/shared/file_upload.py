@@ -104,6 +104,7 @@ class UploadMetadata:
     updated_at: str
     file_path: Optional[str] = None
     file_type: Optional[str] = None
+    progress: int = 0
     metadata: Optional[Dict[str, any]] = None
     
     def __post_init__(self):
@@ -300,17 +301,17 @@ class ChunkedUploadManager:
         upload.status = UploadStatus.UPLOADING
         upload.updated_at = datetime.utcnow().isoformat()
         
+        # 计算进度
+        upload.progress = int((len(upload.uploaded_chunks) / upload.total_chunks) * 100)
+        
         # 保存元数据
         self._save_upload_metadata(upload)
-        
-        # 计算进度
-        progress = int((len(upload.uploaded_chunks) / upload.total_chunks) * 100)
         
         # 发送进度通知
         await websocket_service.send_video_upload_progress(
             user_id=upload.user_id,
             task_id=upload_id,
-            progress=progress,
+            progress=upload.progress,
             file_name=upload.file_name
         )
         
@@ -629,10 +630,13 @@ class FileUploadService:
         if hasattr(upload_metadata.status, 'value'):
              status_str = upload_metadata.status.value
 
+        # 确保元数据中的 progress 是最新的
+        upload_metadata.progress = int((len(upload_metadata.uploaded_chunks) / upload_metadata.total_chunks) * 100)
+
         return {
             "upload_id": upload_id,
             "status": status_str,
-            "progress": int((len(upload_metadata.uploaded_chunks) / upload_metadata.total_chunks) * 100),
+            "progress": upload_metadata.progress,
             "metadata": upload_metadata.to_dict()
         }
     

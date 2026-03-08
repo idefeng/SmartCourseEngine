@@ -42,6 +42,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   LoadingOutlined,
+  RotateRightOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
@@ -389,12 +390,12 @@ export default function VideosPage() {
               />
             </Tooltip>
           )}
-          {record.status === 'completed' && !record.analysis_result && (
-            <Tooltip title="开始分析">
+          {record.status !== 'uploading' && record.status !== 'processing' && (!record.analysis_result || record.analysis_result?.knowledge_points?.length === 0) && (
+            <Tooltip title={record.analysis_result ? "重新分析" : "开始分析"}>
               <Button
                 type="text"
                 size="large"
-                icon={<FileTextOutlined className="text-slate-400 hover:text-orange-500" />}
+                icon={record.analysis_result ? <RotateRightOutlined className="text-slate-400 hover:text-orange-500" /> : <FileTextOutlined className="text-slate-400 hover:text-orange-500" />}
                 onClick={() => handleAnalyze(record.id)}
                 loading={analyzeMutation.isPending}
               />
@@ -646,14 +647,14 @@ export default function VideosPage() {
             <div className="lg:w-5/12 p-8 bg-white overflow-y-auto max-h-[700px]">
               <div className="flex items-center justify-between mb-8">
                 <Title level={4} className="!m-0">AI 分析报告</Title>
-                {!selectedVideo.analysis_result && (
+                {(!selectedVideo.analysis_result || selectedVideo.analysis_result?.knowledge_points?.length === 0) && (
                   <Button
                     type="primary"
                     size="small"
-                    icon={<FileTextOutlined />}
+                    icon={selectedVideo.analysis_result ? <RotateRightOutlined /> : <FileTextOutlined />}
                     onClick={() => handleAnalyze(selectedVideo.id)}
                     loading={analyzeMutation.isPending}
-                  >开始分析</Button>
+                  >{selectedVideo.analysis_result ? '重新分析' : '开始分析'}</Button>
                 )}
               </div>
 

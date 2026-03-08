@@ -131,21 +131,21 @@ export default function HomePage() {
       description: '创建新的在线课程',
       icon: <BookOutlined />,
       gradient: 'from-emerald-500 to-teal-600',
-      action: () => router.push('/courses/new'),
+      action: () => router.push('/courses'),
     },
     {
       title: '知识图谱',
       description: '查看和编辑知识图谱',
       icon: <SearchOutlined />,
       gradient: 'from-violet-500 to-purple-600',
-      action: () => router.push('/knowledge/graph'),
+      action: () => router.push('/knowledge'),
     },
     {
       title: '用户分析',
       description: '查看用户学习数据',
       icon: <TeamOutlined />,
       gradient: 'from-orange-500 to-amber-600',
-      action: () => router.push('/analytics/users'),
+      action: () => router.push('/users'),
     },
   ]
 
@@ -282,7 +282,17 @@ export default function HomePage() {
                   <Card
                     hoverable
                     onClick={action.action}
-                    className="group overflow-hidden border-none text-center p-4 h-full flex flex-col items-center"
+                    className="group overflow-hidden border-none h-full shadow-sm hover:shadow-md transition-all duration-300"
+                    styles={{
+                      body: {
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        padding: '32px 24px',
+                      }
+                    }}
                   >
                     <div className={`w-16 h-16 rounded-3xl bg-gradient-to-br ${action.gradient} text-white text-3xl flex items-center justify-center mb-6 shadow-lg group-hover:rotate-6 transition-all duration-300`}>
                       {action.icon}

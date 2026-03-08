@@ -54,7 +54,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
   // 加载任务
   useEffect(() => {
     loadTasks();
-    
+
     // 监听WebSocket消息
     const handleVideoProgress = (message: any) => {
       const { task_id, progress, message: statusMessage } = message.data;
@@ -107,7 +107,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
   const loadTasks = () => {
     const allTasks = getTasks();
     setTasks(allTasks);
-    
+
     if (!taskId && allTasks.length > 0) {
       setSelectedTask(allTasks[0]);
     }
@@ -208,7 +208,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
   // 渲染任务进度
   const renderTaskProgress = (task: UploadTask) => {
     const analysis = getAnalysisProgress(task.upload_id);
-    
+
     return (
       <div style={{ width: '100%' }}>
         {/* 上传进度 */}
@@ -314,8 +314,8 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
             <PlayCircleOutlined />
             <span>任务进度</span>
             <Badge
-              count={tasks.filter(t => 
-                t.status === UploadStatus.UPLOADING || 
+              count={tasks.filter(t =>
+                t.status === UploadStatus.UPLOADING ||
                 t.status === UploadStatus.PROCESSING
               ).length}
               style={{ backgroundColor: '#52c41a' }}
@@ -364,7 +364,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
                         {selectedTask.file_name}
                       </Text>
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        大小: {formatFileSize(selectedTask.file_size)} | 
+                        大小: {formatFileSize(selectedTask.file_size)} |
                         创建: {new Date(selectedTask.created_at).toLocaleString('zh-CN')}
                       </Text>
                     </div>
@@ -389,12 +389,12 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
                             children: '上传准备',
                           },
                           {
-                            color: selectedTask.uploaded_chunks?.length > 0 ? 'green' : 'gray',
+                            color: (selectedTask.uploaded_chunks?.length || 0) > 0 ? 'green' : 'gray',
                             children: `分片上传 (${selectedTask.uploaded_chunks?.length || 0}/${selectedTask.total_chunks})`,
                           },
                           {
-                            color: selectedTask.status === UploadStatus.PROCESSING ? 'blue' : 
-                                  selectedTask.status === UploadStatus.COMPLETED ? 'green' : 'gray',
+                            color: selectedTask.status === UploadStatus.PROCESSING ? 'blue' :
+                              selectedTask.status === UploadStatus.COMPLETED ? 'green' : 'gray',
                             children: '视频分析',
                           },
                           {
@@ -437,7 +437,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
                         description={
                           <Space direction="vertical" size={2}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                              进度: {task.progress || 0}% | 
+                              进度: {task.progress || 0}% |
                               大小: {formatFileSize(task.file_size)}
                             </Text>
                             {task.status === UploadStatus.UPLOADING && (

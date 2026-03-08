@@ -636,26 +636,47 @@ export default function VideosPage() {
 
               {selectedVideo.analysis_result ? (
                 <div className="space-y-8">
-                  <Timeline className="premium-timeline">
-                    <Timeline.Item color="indigo" label="STEP 1">
-                      <div className="font-bold text-slate-800">深度语音转录</div>
-                      <div className="text-xs text-slate-500 mt-1">
-                        识别精准度: 98% | 词汇量: {selectedVideo.analysis_result.transcript?.total_words || 0}
-                      </div>
-                    </Timeline.Item>
-                    <Timeline.Item color="violet" label="STEP 2">
-                      <div className="font-bold text-slate-800">关键帧视觉分析</div>
-                      <div className="text-xs text-slate-500 mt-1">
-                        提取关键样本: {selectedVideo.analysis_result.keyframes?.length || 0} 个场景快照
-                      </div>
-                    </Timeline.Item>
-                    <Timeline.Item color="emerald" label="STEP 3">
-                      <div className="font-bold text-slate-800">知识图谱构建</div>
-                      <div className="text-xs text-slate-500 mt-1">
-                        提取核心概念: {selectedVideo.analysis_result.knowledge_points?.length || 0} 个知识实体
-                      </div>
-                    </Timeline.Item>
-                  </Timeline>
+                  <Timeline
+                    className="premium-timeline"
+                    items={[
+                      {
+                        color: 'indigo',
+                        label: 'STEP 1',
+                        children: (
+                          <>
+                            <div className="font-bold text-slate-800">深度语音转录</div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              识别精准度: 98% | 词汇量: {selectedVideo.analysis_result.transcript?.total_words || 0}
+                            </div>
+                          </>
+                        ),
+                      },
+                      {
+                        color: 'violet',
+                        label: 'STEP 2',
+                        children: (
+                          <>
+                            <div className="font-bold text-slate-800">关键帧视觉分析</div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              提取关键样本: {selectedVideo.analysis_result.keyframes?.length || 0} 个场景快照
+                            </div>
+                          </>
+                        ),
+                      },
+                      {
+                        color: 'emerald',
+                        label: 'STEP 3',
+                        children: (
+                          <>
+                            <div className="font-bold text-slate-800">知识图谱构建</div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              提取核心概念: {selectedVideo.analysis_result.knowledge_points?.length || 0} 个知识实体
+                            </div>
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
 
                   {selectedVideo.transcript && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">

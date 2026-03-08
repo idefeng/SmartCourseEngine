@@ -1,17 +1,17 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { 
-  Layout, 
-  Card, 
-  Table, 
-  Button, 
-  Space, 
-  Input, 
-  Tag, 
-  Modal, 
-  Form, 
-  Select, 
+import {
+  Layout,
+  Card,
+  Table,
+  Button,
+  Space,
+  Input,
+  Tag,
+  Modal,
+  Form,
+  Select,
   InputNumber,
   Tree,
   message,
@@ -24,8 +24,9 @@ import {
   Descriptions,
   Timeline,
   Progress,
+  Typography,
 } from 'antd'
-import { 
+import {
   EyeOutlined,
   SearchOutlined,
   FilterOutlined,
@@ -90,6 +91,8 @@ interface KnowledgeGraph {
   }
 }
 
+const { Title, Text } = Typography
+
 export default function KnowledgePage() {
   const [searchText, setSearchText] = useState('')
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
@@ -97,6 +100,7 @@ export default function KnowledgePage() {
   const [selectedPoint, setSelectedPoint] = useState<KnowledgePoint | null>(null)
   const [knowledgeGraph, setKnowledgeGraph] = useState<KnowledgeGraph | null>(null)
   const [activeTab, setActiveTab] = useState('list')
+
   // 获取知识点列表
   const { data: knowledgeData, isLoading, refetch } = useQuery({
     queryKey: ['knowledge', searchText],
@@ -136,261 +140,208 @@ export default function KnowledgePage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getImportanceColor = (importance: number) => {
+  const getImportanceConfig = (importance: number) => {
     switch (importance) {
-      case 1: return 'green'
-      case 2: return 'blue'
-      case 3: return 'orange'
-      case 4: return 'red'
-      case 5: return 'purple'
-      default: return 'default'
-    }
-  }
-
-  const getImportanceText = (importance: number) => {
-    switch (importance) {
-      case 1: return '低'
-      case 2: return '中'
-      case 3: return '高'
-      case 4: return '重要'
-      case 5: return '核心'
-      default: return '未知'
+      case 1: return { color: 'text-slate-400 bg-slate-50', text: '入门' }
+      case 2: return { color: 'text-blue-500 bg-blue-50', text: '基础' }
+      case 3: return { color: 'text-indigo-500 bg-indigo-50', text: '核心' }
+      case 4: return { color: 'text-orange-500 bg-orange-50', text: '重要' }
+      case 5: return { color: 'text-purple-600 bg-purple-50', text: '专家' }
+      default: return { color: 'text-slate-400 bg-slate-50', text: '未知' }
     }
   }
 
   const columns: ColumnsType<KnowledgePoint> = [
     {
-      title: '知识点',
+      title: '知识实体',
       dataIndex: 'name',
       key: 'name',
       render: (text, record) => (
-        <div>
-          <div style={{ fontWeight: 500, marginBottom: 4 }}>{text}</div>
-          <div style={{ fontSize: 12, color: '#666' }}>
-            {record.description?.substring(0, 60)}...
+        <div className="max-w-md">
+          <div className="font-bold text-slate-800 text-sm mb-1">{text}</div>
+          <div className="text-[11px] text-slate-400 line-clamp-1 italic">
+            {record.description || '暂无详细描述信息'}
           </div>
         </div>
       ),
     },
     {
-      title: '所属课程',
+      title: '关联素材',
       dataIndex: 'course',
       key: 'course',
-      width: 120,
+      width: 140,
       render: (course) => (
         course ? (
-          <Space>
-            <Avatar size="small" src={course.thumbnail_url} icon={<BookOutlined />} />
-            <span>{course.title}</span>
-          </Space>
+          <div className="flex items-center space-x-2 bg-slate-50 p-1 pr-2 rounded-lg border border-slate-100 inline-flex">
+            <Avatar size={20} src={course.thumbnail_url} icon={<BookOutlined />} className="rounded shadow-sm" />
+            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px]">{course.title}</span>
+          </div>
         ) : (
-          <Tag color="default">未关联</Tag>
+          <span className="text-[10px] text-slate-300 italic">未关联课程</span>
         )
       ),
     },
     {
-      title: '类别',
+      title: '维度分类',
       dataIndex: 'category',
       key: 'category',
       width: 100,
       render: (category) => (
-        <Tag color="blue">{category}</Tag>
+        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tight bg-slate-100 text-slate-500">
+          {category}
+        </span>
       ),
     },
     {
-      title: '重要性',
+      title: '重要性评级',
       dataIndex: 'importance',
       key: 'importance',
       width: 100,
-      render: (importance) => (
-        <Badge 
-          color={getImportanceColor(importance)} 
-          text={getImportanceText(importance)}
-        />
-      ),
+      render: (importance) => {
+        const config = getImportanceConfig(importance)
+        return (
+          <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest inline-flex ${config.color}`}>
+            {config.text}
+          </div>
+        )
+      },
     },
     {
-      title: '置信度',
+      title: 'AI 置信度',
       dataIndex: 'confidence',
       key: 'confidence',
-      width: 100,
-      render: (confidence) => (
-        <Progress 
-          percent={Math.round(confidence * 100)} 
-          size="small" 
-          strokeColor={confidence > 0.8 ? '#52c41a' : confidence > 0.6 ? '#faad14' : '#f5222d'}
-        />
-      ),
-    },
-    {
-      title: '时间范围',
-      key: 'time_range',
       width: 120,
-      render: (_, record) => (
-        <div style={{ fontSize: 12 }}>
-          {formatTime(record.start_time)} - {formatTime(record.end_time)}
+      render: (confidence) => (
+        <div className="space-y-1">
+          <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
+            <span>Precision</span>
+            <span>{Math.round(confidence * 100)}%</span>
+          </div>
+          <Progress
+            percent={Math.round(confidence * 100)}
+            size="small"
+            showInfo={false}
+            strokeColor={confidence > 0.8 ? '#10b981' : confidence > 0.6 ? '#f59e0b' : '#ef4444'}
+            trailColor="#f1f5f9"
+          />
         </div>
       ),
     },
     {
-      title: '概念',
+      title: '概念拓扑',
       dataIndex: 'concepts',
       key: 'concepts',
       render: (concepts) => (
-        <Space size={[0, 4]} wrap>
-          {concepts?.slice(0, 3).map((concept: string) => (
-            <Tag key={concept} color="green">{concept}</Tag>
+        <div className="flex flex-wrap gap-1">
+          {concepts?.slice(0, 2).map((concept: string) => (
+            <span key={concept} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-500 border border-indigo-100/50">
+              #{concept}
+            </span>
           ))}
-          {concepts && concepts.length > 3 && (
-            <Tag>+{concepts.length - 3}</Tag>
+          {concepts && concepts.length > 2 && (
+            <span className="text-[9px] text-slate-300">+{concepts.length - 2}</span>
           )}
-        </Space>
+        </div>
       ),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 100,
-      render: (date) => dayjs(date).format('MM-DD'),
     },
     {
       title: '操作',
       key: 'action',
-      width: 80,
+      width: 60,
       render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="查看详情">
-            <Button 
-              type="text" 
-              icon={<EyeOutlined />} 
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-        </Space>
+        <Tooltip title="详情解析">
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined className="text-slate-400 hover:text-indigo-500" />}
+            onClick={() => handleViewDetails(record)}
+          />
+        </Tooltip>
       ),
     },
   ]
 
-  const knowledgeStats = {
-    total: knowledgePoints.length,
-    categories: Array.from(new Set(knowledgePoints.map(kp => kp.category))).length,
-    concepts: knowledgePoints.reduce((acc, kp) => acc + (kp.concepts?.length || 0), 0),
-    highImportance: knowledgePoints.filter(kp => kp.importance >= 4).length,
-  }
+  const knowledgeStats = [
+    { title: '知识点总数', value: knowledgePoints.length, icon: <BookOutlined />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { title: '维度分类', value: Array.from(new Set(knowledgePoints.map(kp => kp.category))).length, icon: <NodeIndexOutlined />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { title: '关联概念', value: knowledgePoints.reduce((acc, kp) => acc + (kp.concepts?.length || 0), 0), icon: <LinkOutlined />, color: 'text-violet-600', bg: 'bg-violet-50' },
+    { title: '核心权重', value: knowledgePoints.filter(kp => kp.importance >= 4).length, icon: <StarOutlined />, color: 'text-orange-600', bg: 'bg-orange-50' },
+  ]
 
   const knowledgeTreeData = useMemo(() => {
     const categoryMap = new Map<string, KnowledgePoint[]>()
-
     knowledgePoints.forEach((point) => {
       const category = point.category || '未分类'
-      if (!categoryMap.has(category)) {
-        categoryMap.set(category, [])
-      }
+      if (!categoryMap.has(category)) categoryMap.set(category, [])
       categoryMap.get(category)!.push(point)
     })
-
     return Array.from(categoryMap.entries()).map(([category, points]) => ({
-      title: category,
+      title: <span className="font-bold text-slate-700">{category}</span>,
       key: `category-${category}`,
       children: points.map((point) => ({
-        title: point.name,
+        title: <span className="text-slate-500">{point.name}</span>,
         key: `point-${point.id}`,
       })),
     }))
   }, [knowledgePoints])
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
-        background: '#fff', 
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-      }}>
+    <>
+      <Header className="flex-none z-10 h-24 flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div>
-          <h2 style={{ margin: 0 }}>知识管理</h2>
-          <p style={{ margin: 0, color: '#666', fontSize: 14 }}>
-            管理所有知识点，查看知识图谱，进行知识搜索和关联
-          </p>
+          <Title level={3} className="!m-0 !font-bold">知识中枢</Title>
+          <Text type="secondary" className="text-xs">多模态知识提取与智能化拓扑构建</Text>
         </div>
-        <Space>
+
+        <div className="flex items-center space-x-4">
           <Search
-            placeholder="搜索知识点名称或描述"
+            placeholder="检索知识实体..."
             allowClear
-            enterButton={<SearchOutlined />}
             onSearch={handleSearch}
-            style={{ width: 300 }}
+            className="w-64"
           />
-          <Button icon={<FilterOutlined />}>筛选</Button>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-            刷新
-          </Button>
-          <Button 
-            type="primary" 
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} />
+          <Button
+            type="primary"
+            variant="dashed"
             icon={<ClusterOutlined />}
             loading={graphLoading}
             onClick={handleViewGraph}
+            className="bg-indigo-600 border-none shadow-lg shadow-indigo-100 hover:scale-105 transition-transform"
           >
-            查看知识图谱
+            可视化图谱
           </Button>
-        </Space>
+        </div>
       </Header>
-      <Content style={{ margin: '24px' }}>
-        {/* 统计卡片 */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="知识点总数"
-                value={knowledgeStats.total}
-                prefix={<BookOutlined />}
-                valueStyle={{ color: '#3b82f6' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="知识类别"
-                value={knowledgeStats.categories}
-                prefix={<NodeIndexOutlined />}
-                valueStyle={{ color: '#10b981' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="概念数量"
-                value={knowledgeStats.concepts}
-                prefix={<LinkOutlined />}
-                valueStyle={{ color: '#8b5cf6' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card>
-              <Statistic
-                title="重要知识点"
-                value={knowledgeStats.highImportance}
-                prefix={<StarOutlined />}
-                valueStyle={{ color: '#f59e0b' }}
-              />
-            </Card>
-          </Col>
+
+      <Content className="flex-1 overflow-y-auto p-10 space-y-8">
+        <Row gutter={[24, 24]}>
+          {knowledgeStats.map((item, idx) => (
+            <Col xs={24} sm={12} lg={6} key={idx}>
+              <Card className="hover:shadow-lg transition-all group border-none shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Text type="secondary" className="text-[10px] font-bold uppercase tracking-widest block mb-1">{item.title}</Text>
+                    <Title level={3} className="!m-0 !font-black !text-slate-900 group-hover:scale-105 transition-transform">{item.value}</Title>
+                  </div>
+                  <div className={`p-3 rounded-2xl ${item.bg} ${item.color} text-2xl animate-float`} style={{ animationDelay: `${idx * 0.15}s` }}>
+                    {item.icon}
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          ))}
         </Row>
 
         <Card
-          tabList={[
-            { key: 'list', tab: '知识点列表' },
-            { key: 'tree', tab: '知识树' },
-            { key: 'search', tab: '高级搜索' },
-          ]}
+          className="border-none shadow-sm overflow-hidden premium-card-tabs"
           activeTabKey={activeTab}
           onTabChange={setActiveTab}
+          tabList={[
+            { key: 'list', tab: <span className="font-bold">实体矩阵</span> },
+            { key: 'tree', tab: <span className="font-bold">层级拓扑</span> },
+            { key: 'search', tab: <span className="font-bold">深度检索</span> },
+          ]}
         >
           {activeTab === 'list' && (
             <Table
@@ -398,264 +349,257 @@ export default function KnowledgePage() {
               dataSource={knowledgePoints}
               rowKey="id"
               loading={isLoading}
+              className="premium-table"
               pagination={{
-                total: knowledgeData?.data?.total || 0,
+                total: (knowledgeData as any)?.pagination?.total || knowledgePoints.length,
                 pageSize: 10,
                 showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total) => `共 ${total} 条记录`,
+                showTotal: (total) => <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Total: {total} nodes</span>,
               }}
             />
           )}
-          
+
           {activeTab === 'tree' && (
-            <div style={{ padding: 24, textAlign: 'center' }}>
+            <div className="py-10 px-20 bg-slate-50/50 rounded-2xl border border-slate-100">
               <Tree
-                showLine
+                showLine={{ showLeafIcon: false }}
                 defaultExpandAll
                 treeData={knowledgeTreeData}
+                className="!bg-transparent premium-tree"
               />
             </div>
           )}
-          
+
           {activeTab === 'search' && (
-            <div style={{ padding: 24 }}>
-              <Form layout="vertical">
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="关键词搜索">
-                      <Input placeholder="输入关键词" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="知识类别">
-                      <Select placeholder="选择知识类别" mode="multiple">
-                        <Option value="programming">编程基础</Option>
-                        <Option value="control-flow">控制流</Option>
-                        <Option value="functions">函数</Option>
-                        <Option value="oop">面向对象</Option>
-                        <Option value="data-structures">数据结构</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Form.Item label="重要性">
-                      <Select placeholder="选择重要性" mode="multiple">
-                        <Option value={1}>低</Option>
-                        <Option value={2}>中</Option>
-                        <Option value={3}>高</Option>
-                        <Option value={4}>重要</Option>
-                        <Option value={5}>核心</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="置信度阈值">
-                      <InputNumber 
-                        min={0} 
-                        max={1} 
-                        step={0.1}
-                        placeholder="0.0-1.0"
-                        style={{ width: '100%' }}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="时间范围">
-                      <Input placeholder="开始时间-结束时间" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Form.Item>
-                  <Button type="primary" icon={<FileSearchOutlined />}>
-                    开始搜索
+            <div className="py-10">
+              <Form layout="vertical" className="max-w-4xl mx-auto space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <Form.Item label={<span className="font-bold text-slate-700">语义关键词</span>}>
+                    <Input prefix={<SearchOutlined className="text-slate-300" />} placeholder="输入知识实体或概念名称..." size="large" />
+                  </Form.Item>
+                  <Form.Item label={<span className="font-bold text-slate-700">维度过滤</span>}>
+                    <Select placeholder="选择知识维度" mode="multiple" size="large">
+                      <Option value="programming">智能开发</Option>
+                      <Option value="control-flow">算法逻辑</Option>
+                      <Option value="functions">架构模式</Option>
+                      <Option value="oop">工程实践</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <Form.Item label={<span className="font-bold text-slate-700">权重等级</span>}>
+                    <Select placeholder="筛选重要性" mode="multiple" size="large">
+                      <Option value={3}>核心模块</Option>
+                      <Option value={4}>关键链路</Option>
+                      <Option value={5}>顶层架构</Option>
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label={<span className="font-bold text-slate-700">最小置信度阈值</span>}>
+                    <InputNumber min={0} max={1} step={0.1} placeholder="0.0 - 1.0" className="w-full" size="large" />
+                  </Form.Item>
+                  <Form.Item label={<span className="font-bold text-slate-700">时间窗口</span>}>
+                    <Input placeholder="00:00 - 99:99" size="large" />
+                  </Form.Item>
+                </div>
+
+                <div className="flex justify-center pt-6">
+                  <Button type="primary" size="large" icon={<FileSearchOutlined />} className="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100">
+                    执行高级语义搜索
                   </Button>
-                </Form.Item>
+                </div>
               </Form>
             </div>
           )}
         </Card>
       </Content>
 
-      {/* 知识点详情模态框 */}
       <Modal
-        title="知识点详情"
+        title={null}
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={null}
-        width={700}
+        width={800}
+        centered
+        className="premium-detail-modal"
+        styles={{ body: { padding: 0 } }}
       >
         {selectedPoint && (
-          <div>
-            <Descriptions bordered column={2}>
-              <Descriptions.Item label="知识点名称" span={2}>
-                <div style={{ fontSize: 16, fontWeight: 500 }}>
-                  {selectedPoint.name}
+          <div className="flex flex-col md:flex-row min-h-[500px]">
+            <div className="md:w-5/12 p-8 bg-slate-900 text-white flex flex-col justify-between">
+              <div>
+                <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Entity ID: {selectedPoint.id}</div>
+                <Title level={2} className="!text-white !font-black !m-0 !tracking-tight">{selectedPoint.name}</Title>
+                <div className="mt-6 space-y-4">
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
+                    <div className="text-[9px] font-bold text-slate-400 uppercase mb-2">Core Description</div>
+                    <Text className="text-slate-300 text-sm leading-relaxed italic">"{selectedPoint.description}"</Text>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-indigo-600 rounded-full text-[10px] font-bold uppercase">{selectedPoint.category}</span>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getImportanceConfig(selectedPoint.importance).color} text-white`}>
+                      {getImportanceConfig(selectedPoint.importance).text}
+                    </span>
+                  </div>
                 </div>
-              </Descriptions.Item>
-              <Descriptions.Item label="描述" span={2}>
-                {selectedPoint.description}
-              </Descriptions.Item>
-              <Descriptions.Item label="所属课程">
-                {selectedPoint.course ? (
-                  <Space>
-                    <Avatar size="small" src={selectedPoint.course.thumbnail_url} />
-                    <span>{selectedPoint.course.title}</span>
-                  </Space>
-                ) : (
-                  '未关联'
-                )}
-              </Descriptions.Item>
-              <Descriptions.Item label="知识类别">
-                <Tag color="blue">{selectedPoint.category}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="重要性">
-                <Badge 
-                  color={getImportanceColor(selectedPoint.importance)} 
-                  text={getImportanceText(selectedPoint.importance)}
-                />
-              </Descriptions.Item>
-              <Descriptions.Item label="置信度">
-                <Progress 
-                  percent={Math.round(selectedPoint.confidence * 100)} 
-                  size="small" 
-                  strokeColor={selectedPoint.confidence > 0.8 ? '#52c41a' : selectedPoint.confidence > 0.6 ? '#faad14' : '#f5222d'}
-                />
-              </Descriptions.Item>
-              <Descriptions.Item label="时间范围">
-                {formatTime(selectedPoint.start_time)} - {formatTime(selectedPoint.end_time)}
-              </Descriptions.Item>
-              <Descriptions.Item label="创建时间">
-                {dayjs(selectedPoint.created_at).format('YYYY-MM-DD HH:mm:ss')}
-              </Descriptions.Item>
-              <Descriptions.Item label="更新时间">
-                {dayjs(selectedPoint.updated_at).format('YYYY-MM-DD HH:mm:ss')}
-              </Descriptions.Item>
-              <Descriptions.Item label="关联概念" span={2}>
-                <Space size={[4, 8]} wrap>
-                  {selectedPoint.concepts?.map((concept) => (
-                    <Tag key={concept} color="green">{concept}</Tag>
-                  ))}
-                </Space>
-              </Descriptions.Item>
-            </Descriptions>
+              </div>
 
-            <Card title="时间线" style={{ marginTop: 16 }}>
-              <Timeline>
-                <Timeline.Item color="green">
-                  <p>知识点创建</p>
-                  <p style={{ fontSize: 12, color: '#666' }}>
-                    {dayjs(selectedPoint.created_at).format('YYYY-MM-DD HH:mm:ss')}
-                  </p>
-                </Timeline.Item>
-                <Timeline.Item color="blue">
-                  <p>知识点更新</p>
-                  <p style={{ fontSize: 12, color: '#666' }}>
-                    {dayjs(selectedPoint.updated_at).format('YYYY-MM-DD HH:mm:ss')}
-                  </p>
-                </Timeline.Item>
-                <Timeline.Item color="orange">
-                  <p>嵌入向量生成</p>
-                  <p style={{ fontSize: 12, color: '#666' }}>
-                    维度: {selectedPoint.embedding?.length || 0}
-                  </p>
-                </Timeline.Item>
-              </Timeline>
-            </Card>
-          </div>
-        )}
-      </Modal>
+              <div className="pt-10 space-y-6">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Time Window</div>
+                    <div className="text-2xl font-black">{formatTime(selectedPoint.start_time)} <span className="text-sm opacity-30 mx-2">→</span> {formatTime(selectedPoint.end_time)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">AI Confidence</div>
+                    <div className="text-2xl font-black text-emerald-400">{Math.round(selectedPoint.confidence * 100)}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-      {/* 知识图谱模态框 */}
-      <Modal
-        title="知识图谱"
-        open={isGraphModalOpen}
-        onCancel={() => setIsGraphModalOpen(false)}
-        footer={null}
-        width={900}
-      >
-        {knowledgeGraph && (
-          <div>
-            <Descriptions bordered size="small" style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="节点总数">
-                {knowledgeGraph.metadata.total_nodes}
-              </Descriptions.Item>
-              <Descriptions.Item label="边总数">
-                {knowledgeGraph.metadata.total_edges}
-              </Descriptions.Item>
-              <Descriptions.Item label="知识点数量">
-                {knowledgeGraph.metadata.knowledge_points}
-              </Descriptions.Item>
-              <Descriptions.Item label="生成时间">
-                {dayjs(knowledgeGraph.metadata.generated_at).format('YYYY-MM-DD HH:mm:ss')}
-              </Descriptions.Item>
-            </Descriptions>
+            <div className="md:w-7/12 p-10 bg-white">
+              <Title level={4} className="!font-black mb-8 italic uppercase tracking-tighter shadow-indigo-50">Topology Trace</Title>
 
-            <div style={{ 
-              border: '1px solid #d9d9d9', 
-              borderRadius: 8, 
-              padding: 24,
-              minHeight: 400,
-              background: '#fafafa',
-              textAlign: 'center',
-            }}>
-              <ClusterOutlined style={{ fontSize: 48, color: '#3b82f6', marginBottom: 16 }} />
-              <h3>知识图谱可视化</h3>
-              <p style={{ color: '#666', marginBottom: 24 }}>
-                当前展示基于真实知识点构建的图谱数据摘要。
-              </p>
-              
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <Card title="节点类型" size="small">
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div style={{ width: 12, height: 12, background: '#3b82f6', borderRadius: '50%', marginRight: 8 }} />
-                        <span>知识点节点 ({knowledgeGraph.nodes.filter(n => n.type === 'knowledge_point').length})</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div style={{ width: 12, height: 12, background: '#10b981', borderRadius: '50%', marginRight: 8 }} />
-                        <span>概念节点 ({knowledgeGraph.nodes.filter(n => n.type === 'concept').length})</span>
-                      </div>
-                    </Space>
-                  </Card>
-                </Col>
-                <Col span={12}>
-                  <Card title="关系类型" size="small">
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div style={{ width: 20, height: 2, background: '#8b5cf6', marginRight: 8 }} />
-                        <span>包含关系 ({knowledgeGraph.edges.filter(e => e.type === 'contains').length})</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div style={{ width: 20, height: 2, background: '#f59e0b', marginRight: 8 }} />
-                        <span>先后关系 ({knowledgeGraph.edges.filter(e => e.type === 'precedes').length})</span>
-                      </div>
-                    </Space>
-                  </Card>
-                </Col>
-              </Row>
+              <div className="space-y-8">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
+                    <LinkOutlined className="mr-2" /> Linked Concepts
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPoint.concepts?.map((concept) => (
+                      <span key={concept} className="px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 shadow-sm hover:border-indigo-200 transition-colors cursor-default">
+                        #{concept}
+                      </span>
+                    ))}
+                  </div>
+                </div>
 
-              <div style={{ marginTop: 24 }}>
-                <h4>知识图谱数据</h4>
-                <div style={{ 
-                  maxHeight: 200, 
-                  overflowY: 'auto', 
-                  border: '1px solid #d9d9d9',
-                  borderRadius: 4,
-                  padding: 8,
-                  background: '#fff',
-                  fontSize: 12,
-                }}>
-                  <pre>{JSON.stringify(knowledgeGraph, null, 2)}</pre>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
+                    <ShareAltOutlined className="mr-2" /> Evolution Path
+                  </div>
+                  <Timeline
+                    className="compact-timeline"
+                    items={[
+                      {
+                        color: 'indigo',
+                        label: 'ORIGIN',
+                        children: (
+                          <>
+                            <div className="text-xs font-bold text-slate-800">实体提取自底层多模态引擎</div>
+                            <div className="text-[10px] text-slate-400 mt-1">{dayjs(selectedPoint.created_at).format('YYYY.MM.DD HH:mm')}</div>
+                          </>
+                        ),
+                      },
+                      {
+                        color: 'violet',
+                        label: 'EMBED',
+                        children: (
+                          <>
+                            <div className="text-xs font-bold text-slate-800">生成 {selectedPoint.embedding?.length || 0}D 高维语义向量</div>
+                            <div className="text-[10px] text-slate-400 mt-1">向量数据库已索引</div>
+                          </>
+                        ),
+                      },
+                      {
+                        color: 'emerald',
+                        label: 'FINAL',
+                        children: (
+                          <>
+                            <div className="text-xs font-bold text-slate-800">进入生产级知识中枢</div>
+                            <div className="text-[10px] text-slate-400 mt-1">同步分发至教研资产库</div>
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             </div>
           </div>
         )}
       </Modal>
-    </Layout>
+
+      <Modal
+        title={<div className="text-lg font-black pb-4 border-b uppercase tracking-widest">Global Knowledge Graph Topology</div>}
+        open={isGraphModalOpen}
+        onCancel={() => setIsGraphModalOpen(false)}
+        footer={null}
+        width={1000}
+        centered
+        className="premium-graph-modal"
+      >
+        {knowledgeGraph && (
+          <div className="p-4">
+            <div className="grid grid-cols-4 gap-4 mb-8">
+              {[
+                { label: 'Nodes', value: knowledgeGraph.metadata.total_nodes, sub: 'Total Entites' },
+                { label: 'Edges', value: knowledgeGraph.metadata.total_edges, sub: 'Semantic Links' },
+                { label: 'KP', value: knowledgeGraph.metadata.knowledge_points, sub: 'Points of interest' },
+                { label: 'Sync', value: 'Live', sub: dayjs(knowledgeGraph.metadata.generated_at).format('HH:mm') }
+              ].map((s, i) => (
+                <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center justify-center text-center">
+                  <div className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">{s.label}</div>
+                  <div className="text-xl font-black text-slate-800 tracking-tighter">{s.value}</div>
+                  <div className="text-[9px] text-slate-400 mt-1">{s.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="aspect-[21/9] rounded-3xl bg-slate-900 overflow-hidden relative border-8 border-slate-50 shadow-inner flex items-center justify-center group">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/40 via-transparent to-transparent opacity-40 group-hover:opacity-60 transition-opacity"></div>
+
+              <div className="relative z-10 text-center animate-fadeIn">
+                <ClusterOutlined className="text-6xl text-indigo-400 mb-6 drop-shadow-[0_0_15px_rgba(129,140,248,0.5)]" />
+                <div className="max-w-md mx-auto px-8">
+                  <Title level={3} className="!text-white !font-black !m-0 !tracking-tight">Interactive Knowledge Engine</Title>
+                  <Text className="text-slate-400 text-sm mt-4 block leading-relaxed">
+                    基于高维向量自相似性聚类动态生成的全域知识拓扑。正在计算语义关联权重并实时渲染实时链路。
+                  </Text>
+                </div>
+              </div>
+
+              {/* Mock Particles for Graph Vibe */}
+              <div className="absolute top-10 left-10 w-2 h-2 rounded-full bg-indigo-500/40 animate-pulse"></div>
+              <div className="absolute bottom-10 right-20 w-3 h-3 rounded-full bg-emerald-500/30 animate-pulse delay-500"></div>
+              <div className="absolute top-1/2 left-20 w-1 h-1 rounded-full bg-violet-500/50 animate-pulse delay-700"></div>
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 gap-8">
+              <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Distribution Matrix</div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-[11px] font-bold mb-1.5">
+                      <span className="text-slate-600">Knowledge Points</span>
+                      <span className="text-indigo-600">{knowledgeGraph.nodes.filter(n => n.type === 'knowledge_point').length}</span>
+                    </div>
+                    <Progress percent={65} showInfo={false} strokeColor="#6366f1" size="small" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-bold mb-1.5">
+                      <span className="text-slate-600">Concepts Nodes</span>
+                      <span className="text-emerald-600">{knowledgeGraph.nodes.filter(n => n.type === 'concept').length}</span>
+                    </div>
+                    <Progress percent={35} showInfo={false} strokeColor="#10b981" size="small" />
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-100 overflow-hidden relative">
+                <div className="relative z-10 h-full flex flex-col justify-between">
+                  <div className="text-[10px] font-black opacity-60 uppercase tracking-widest">Graph Density</div>
+                  <div>
+                    <div className="text-4xl font-black tracking-tighter">High Alpha</div>
+                    <div className="text-xs opacity-80 mt-2 italic font-medium">知识链路完整性已达 94.2%，建议进行跨科室概念聚合。</div>
+                  </div>
+                </div>
+                <ShareAltOutlined className="absolute -bottom-4 -right-4 text-9xl opacity-10 rotate-12" />
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   )
 }

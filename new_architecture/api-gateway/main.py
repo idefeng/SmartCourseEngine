@@ -572,6 +572,70 @@ async def list_knowledge_points(
         }
     )
 
+@app.post("/api/v1/knowledge/graph", tags=["知识点"])
+@handle_exceptions
+async def build_knowledge_graph(
+    payload: Dict[str, Any] = Body(...),
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    构建知识图谱：基于知识点列表生成节点和边
+    此版本为 Mock 实现，直接基于传入的知识点生成简单的拓扑结构
+    """
+    knowledge_points = payload.get("knowledge_points", [])
+    if not isinstance(knowledge_points, list):
+        knowledge_points = []
+        
+    nodes = []
+    edges = []
+    
+    # 模拟生成节点
+    for kp in knowledge_points:
+        # 知识点节点
+        nodes.append({
+            "id": f"kp_{kp.get('id')}",
+            "type": "knowledge_point",
+            "name": kp.get("name"),
+            "category": kp.get("category"),
+            "importance": kp.get("importance")
+        })
+        
+        # 提取概念并建立连接
+        concepts = kp.get("concepts", [])
+        for concept in concepts:
+            concept_id = f"concept_{concept}"
+            # 如果概念节点已存在则不重复添加
+            if not any(n["id"] == concept_id for n in nodes):
+                nodes.append({
+                    "id": concept_id,
+                    "type": "concept",
+                    "name": concept,
+                    "category": "概念"
+                })
+            
+            # 建立知识点到概念的边
+            edges.append({
+                "source": f"kp_{kp.get('id')}",
+                "target": concept_id,
+                "type": "MENTIONS",
+                "weight": 1.0
+            })
+            
+    return BaseResponse(
+        success=True,
+        message="构建知识图谱成功",
+        data={
+            "nodes": nodes,
+            "edges": edges,
+            "metadata": {
+                "total_nodes": len(nodes),
+                "total_edges": len(edges),
+                "knowledge_points": len(knowledge_points),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+    )
+
 # ============================================================================
 # GraphQL端点（预留）
 # ============================================================================

@@ -14,7 +14,7 @@ import os
 import sys
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
 # 添加共享模块路径
@@ -635,6 +635,80 @@ async def build_knowledge_graph(
             }
         }
     )
+
+@app.get("/api/v1/users", tags=["用户"])
+@handle_exceptions
+async def list_users(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(10, ge=1, le=200, description="每页大小"),
+    search: Optional[str] = Query(None, description="搜索关键词"),
+    authenticated: bool = Depends(verify_api_key)
+):
+    """
+    获取用户列表（Mock 实现）
+    """
+    mock_users = [
+        {
+            "id": 1,
+            "username": "learning_wizard",
+            "email": "wizard@example.com",
+            "role": "admin",
+            "status": "active",
+            "last_login": (datetime.now() - timedelta(hours=2)).isoformat(),
+            "learning_progress": 95,
+            "enrolled_courses": 12,
+            "created_at": "2024-01-10T10:00:00"
+        },
+        {
+            "id": 2,
+            "username": "codemaster_99",
+            "email": "code@example.com",
+            "role": "master",
+            "status": "active",
+            "last_login": (datetime.now() - timedelta(days=1)).isoformat(),
+            "learning_progress": 78,
+            "enrolled_courses": 5,
+            "created_at": "2024-02-15T14:30:00"
+        },
+        {
+            "id": 3,
+            "username": "student_007",
+            "email": "james@edu.com",
+            "role": "student",
+            "status": "active",
+            "last_login": (datetime.now() - timedelta(minutes=45)).isoformat(),
+            "learning_progress": 42,
+            "enrolled_courses": 8,
+            "created_at": "2024-03-01T09:15:00"
+        },
+        {
+            "id": 4,
+            "username": "data_explorer",
+            "email": "explorer@lab.io",
+            "role": "student",
+            "status": "inactive",
+            "last_login": (datetime.now() - timedelta(weeks=2)).isoformat(),
+            "learning_progress": 15,
+            "enrolled_courses": 2,
+            "created_at": "2024-02-20T11:20:00"
+        }
+    ]
+    
+    if search:
+        s = search.lower()
+        mock_users = [u for u in mock_users if s in u["username"].lower() or s in u["email"].lower()]
+        
+    return BaseResponse(
+        success=True,
+        message="获取用户列表成功",
+        data={
+            "items": mock_users,
+            "total": len(mock_users),
+            "page": page,
+            "page_size": page_size
+        }
+    )
+
 
 # ============================================================================
 # GraphQL端点（预留）

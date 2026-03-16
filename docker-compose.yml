@@ -23,7 +23,7 @@ services:
     container_name: smartcourse-chroma
     restart: always
     ports:
-      - "8000:8000"
+      - "8008:8000"
     volumes:
       - chroma_data:/chroma/chroma
     environment:

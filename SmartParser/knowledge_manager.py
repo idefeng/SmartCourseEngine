@@ -35,15 +35,12 @@ console = Console()
 API_KEY = os.getenv("DEEPSEEK_API_KEY", "your-deepseek-api-key-here")
 BASE_URL = os.getenv("API_BASE_URL", "https://api.deepseek.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "deepseek-chat")
+# Embedding 配置
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002")
 
-# 如果使用 Qwen (通义千问)，请取消下面的注释：
-# BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-# MODEL_NAME = "qwen-turbo"
-
-# 如果使用 OpenAI，请取消下面的注释：
-# BASE_URL = "https://api.openai.com/v1"
-# MODEL_NAME = "gpt-4o-mini"
+# ChromaDB 配置
+CHROMA_HOST = os.getenv("CHROMA_HOST", None)
+CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 
 
 # ============================================================================
@@ -143,10 +140,18 @@ class KnowledgeManager:
             
             self.db_path.mkdir(parents=True, exist_ok=True)
             
-            self.chroma_client = chromadb.PersistentClient(
-                path=str(self.db_path),
-                settings=Settings(anonymized_telemetry=False)
-            )
+            if CHROMA_HOST:
+                console.print(f"[blue]→[/blue] 正在连接远程向量数据库: {CHROMA_HOST}:{CHROMA_PORT}")
+                self.chroma_client = chromadb.HttpClient(
+                    host=CHROMA_HOST,
+                    port=CHROMA_PORT,
+                    settings=Settings(anonymized_telemetry=False)
+                )
+            else:
+                self.chroma_client = chromadb.PersistentClient(
+                    path=str(self.db_path),
+                    settings=Settings(anonymized_telemetry=False)
+                )
             
             # 获取或创建集合
             self.collection = self.chroma_client.get_or_create_collection(

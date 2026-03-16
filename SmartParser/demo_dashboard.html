@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartCourseEngine | 演示工作台</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #c299ff;
+            --accent: #ff99f3;
+            --bg: #0f0a1a;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            background: var(--bg);
+            color: #fff;
+            min-height: 100vh;
+            background: radial-gradient(circle at 50% -20%, #2a1b4d 0%, #0f0a1a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(194, 153, 255, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2 span {
+            font-size: 0.8rem;
+            background: var(--primary);
+            color: var(--bg);
+            padding: 4px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .content-list {
+            list-style: none;
+        }
+
+        .content-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .content-list li:last-child {
+            border: none;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .metrics {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .metric-item {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .video-mock {
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+        }
+
+        .play-btn {
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.1);
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .footer {
+            margin-top: 60px;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="subtitle">AI-Driven Education Engine</div>
+        <h1>SmartCourseEngine</h1>
+        <p>演示工作台 v1.0 (48h MVP Sprint)</p>
+    </header>
+
+    <div class="dashboard">
+        <!-- 知识库模块 -->
+        <div class="card">
+            <h2>中医知识库 <span>Live</span></h2>
+            <ul class="content-list">
+                <li>
+                    <span>阴阳对立制约</span>
+                    <span class="badge">核心考点</span>
+                </li>
+                <li>
+                    <span>五行相生相克</span>
+                    <span class="badge">重点内容</span>
+                </li>
+                <li>
+                    <span>精、气、神</span>
+                    <span class="badge">二级知识点</span>
+                </li>
+            </ul>
+            <div class="metrics">
+                <div class="metric-item">
+                    <div class="metric-value">98%</div>
+                    <div class="metric-label">提取准确率</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">124</div>
+                    <div class="metric-label">语义分块</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 课程产出模块 -->
+        <div class="card">
+            <h2>课程生成资产 <span>Ready</span></h2>
+            <ul class="content-list">
+                <li>
+                    <span>《阴阳五行学说》PPT 大纲</span>
+                    <span class="badge">Markdown</span>
+                </li>
+                <li>
+                    <span>教学视频脚本 (数字人适配)</span>
+                    <span class="badge">Script</span>
+                </li>
+                <li>
+                    <span>随堂测试题库 (20题)</span>
+                    <span class="badge">JSON</span>
+                </li>
+            </ul>
+            <br>
+            <div class="video-mock">
+                <div class="play-btn">▶</div>
+                <div style="position: absolute; bottom: 10px; font-size: 0.7rem; color: #fff;">数字人模拟: 张老师(中医专家)</div>
+            </div>
+        </div>
+
+        <!-- 教学质量评估模块 -->
+        <div class="card">
+            <h2>教学质量分析 <span>AI Monitor</span></h2>
+            <div class="metrics">
+                <div class="metric-item">
+                    <div class="metric-value">85</div>
+                    <div class="metric-label">互动评分</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">92%</div>
+                    <div class="metric-label">知识覆盖</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">4.2</div>
+                    <div class="metric-label">流畅度</div>
+                </div>
+            </div>
+            <br>
+            <p style="font-size: 0.9rem; color: rgba(255,255,255,0.7);">
+                <strong>AI 总结：</strong> 老师在“阴阳转化”环节点拨精准，学生参与度高。建议减少“那个”、“然后”等口头禅使用。
+            </p>
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2026 SmartCourseEngine Demo Team | Privacy Protected | Locally Powered
+    </div>
+</body>
+</html>

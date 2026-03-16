@@ -78,6 +78,7 @@ logs/
 
 # Uploads
 uploads/
+!uploads/中医基础理论_演示.md
 data/
 
 # Environment variables
